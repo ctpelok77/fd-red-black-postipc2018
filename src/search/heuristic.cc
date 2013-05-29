@@ -129,6 +129,15 @@ void Heuristic::add_options_to_parser(OptionParser &parser) {
                            cost_types,
                            "NORMAL",
                            "operator cost adjustment type");
+    // Memory paddings of <= 50 MB often result in the run being killed, just
+    // because it is very close to its memory limit. Setting this to 75 MB
+    // avoids this issue. The reason for this behaviour seems to be that the
+    // search needs adjacent memory.
+    parser.add_option<int>("memory_padding", 75, "memory in MB that can be released when we run out of space");
+    Options opts = parser.parse();
+    if (opts.get<int>("memory_padding") < 0)
+        parser.error("memory padding cannot be negative");
+    g_memory_padding_mb = opts.get<int>("memory_padding");
 }
 
 //this solution to get default values seems not optimal:

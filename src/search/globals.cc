@@ -11,6 +11,7 @@
 #include "successor_generator.h"
 #include "timer.h"
 #include "utilities.h"
+#include "cegar/utils.h"
 
 #include <cstdlib>
 #include <iostream>
@@ -27,7 +28,8 @@ using namespace __gnu_cxx;
 
 
 static const int PRE_FILE_VERSION = 3;
-static char *memory_padding = new char[1024];
+// We need at least 8KB for a clean exit.
+static char *memory_padding = new char[10240];
 
 
 // TODO: This needs a proper type and should be moved to a separate
@@ -260,6 +262,27 @@ void read_everything(istream &in) {
     // NOTE: causal graph is computed from the problem specification,
     // so must be built after the problem has been read in.
     g_causal_graph = new CausalGraph;
+
+    g_is_unit_cost = (g_min_action_cost == 1 && g_max_action_cost == 1);
+
+    cegar_heuristic::partial_ordering(*g_causal_graph, &g_causal_graph_ordering);
+    g_causal_graph_ordering_pos.resize(g_causal_graph_ordering.size(), cegar_heuristic::UNDEFINED);
+    for (int i = 0; i < g_causal_graph_ordering.size(); ++i) {
+        int var = g_causal_graph_ordering[i];
+        g_causal_graph_ordering_pos[var] = i;
+    }
+    cout << "Causal graph ordering: ";
+    for (int pos = 0; pos < g_causal_graph_ordering.size(); ++pos)
+        cout << g_causal_graph_ordering[pos] << " ";
+    cout << endl;
+
+    for (int i = 0; i < g_operators.size(); ++i)
+        g_original_op_costs.push_back(g_operators[i].get_cost());
+    g_original_goal = g_goal;
+
+    g_cegar_abstraction = 0;
+    cout << "Peak memory before building abstraction: "
+         << get_peak_memory_in_kb() << " KB" << endl;
 }
 
 void dump_everything() {
@@ -329,7 +352,16 @@ void no_memory () {
     exit_with(EXIT_OUT_OF_MEMORY);
 }
 
+void reset_original_goals_and_costs() {
+    g_goal = g_original_goal;
+    assert(g_original_op_costs.size() == g_operators.size());
+    for (int i = 0; i < g_operators.size(); ++i)
+        g_operators[i].set_cost(g_original_op_costs[i]);
+}
+
+
 bool g_use_metric;
+bool g_is_unit_cost;
 int g_min_action_cost = numeric_limits<int>::max();
 int g_max_action_cost = 0;
 vector<string> g_variable_name;
@@ -350,3 +382,11 @@ LegacyCausalGraph *g_legacy_causal_graph;
 Timer g_timer;
 string g_plan_filename = "sas_plan";
 RandomNumberGenerator g_rng(2011); // Use an arbitrary default seed.
+
+cegar_heuristic::Abstraction *g_cegar_abstraction;
+std::vector<std::pair<int, int> > g_original_goal;
+std::vector<int> g_original_op_costs;
+std::vector<int> g_causal_graph_ordering;
+std::vector<int> g_causal_graph_ordering_pos;
+
+int g_memory_padding_mb = 0;
