@@ -63,61 +63,69 @@ HEADERS = \
 ## rebuild after such a change. Deleting the executable and running
 ## "make" to relink is enough; no need to do a complete rebuild.
 
-HEADERS += additive_heuristic.h
-HEADERS += blind_search_heuristic.h
-HEADERS += cea_heuristic.h
-HEADERS += cg_heuristic.h cg_cache.h
-HEADERS += ff_heuristic.h
-HEADERS += goal_count_heuristic.h
-HEADERS += hm_heuristic.h
-HEADERS += lm_cut_heuristic.h
-HEADERS += max_heuristic.h
+#HEADERS += additive_heuristic.h
+#HEADERS += blind_search_heuristic.h
+#HEADERS += cea_heuristic.h
+#HEADERS += cg_heuristic.h cg_cache.h
+#HEADERS += ff_heuristic.h
+#HEADERS += goal_count_heuristic.h
+#HEADERS += hm_heuristic.h
+#HEADERS += lm_cut_heuristic.h
+#HEADERS += max_heuristic.h
 
-HEADERS += merge_and_shrink/abstraction.h \
-           merge_and_shrink/label_reducer.h \
-           merge_and_shrink/merge_and_shrink_heuristic.h \
-           merge_and_shrink/shrink_bisimulation.h \
-           merge_and_shrink/shrink_bucket_based.h \
-           merge_and_shrink/shrink_fh.h \
-           merge_and_shrink/shrink_random.h \
-           merge_and_shrink/shrink_strategy.h \
-           merge_and_shrink/variable_order_finder.h \
+#HEADERS += merge_and_shrink/abstraction.h \
+#           merge_and_shrink/label_reducer.h \
+#           merge_and_shrink/merge_and_shrink_heuristic.h \
+#           merge_and_shrink/shrink_bisimulation.h \
+#           merge_and_shrink/shrink_bucket_based.h \
+#           merge_and_shrink/shrink_fh.h \
+#           merge_and_shrink/shrink_random.h \
+#           merge_and_shrink/shrink_strategy.h \
+#           merge_and_shrink/variable_order_finder.h \
 
-HEADERS += landmarks/exploration.h \
-           landmarks/h_m_landmarks.h \
-           landmarks/lama_ff_synergy.h \
-           landmarks/landmark_cost_assignment.h \
-           landmarks/landmark_count_heuristic.h \
-           landmarks/landmark_status_manager.h \
-           landmarks/landmark_graph_merged.h \
-           landmarks/landmark_graph.h \
-           landmarks/landmark_factory.h \
-           landmarks/landmark_factory_rpg_exhaust.h \
-           landmarks/landmark_factory_rpg_sasp.h \
-           landmarks/landmark_factory_zhu_givan.h \
-           landmarks/util.h \
+#HEADERS += landmarks/exploration.h \
+#           landmarks/h_m_landmarks.h \
+#           landmarks/lama_ff_synergy.h \
+#           landmarks/landmark_cost_assignment.h \
+#           landmarks/landmark_count_heuristic.h \
+#           landmarks/landmark_status_manager.h \
+#           landmarks/landmark_graph_merged.h \
+#           landmarks/landmark_graph.h \
+#           landmarks/landmark_factory.h \
+#           landmarks/landmark_factory_rpg_exhaust.h \
+#           landmarks/landmark_factory_rpg_sasp.h \
+#           landmarks/landmark_factory_zhu_givan.h \
+#           landmarks/util.h \
 
-HEADERS += learning/AODE.h \
-           learning/classifier.h \
-           learning/composite_feature_extractor.h \
-           learning/feature_extractor.h \
-           learning/maximum_heuristic.h \
-           learning/naive_bayes_classifier.h \
-           learning/PDB_state_space_sample.h \
-           learning/probe_state_space_sample.h \
-           learning/selective_max_heuristic.h \
-           learning/state_space_sample.h \
-           learning/state_vars_feature_extractor.h \
+#HEADERS += learning/AODE.h \
+#           learning/classifier.h \
+#           learning/composite_feature_extractor.h \
+#           learning/feature_extractor.h \
+#           learning/maximum_heuristic.h \
+#           learning/naive_bayes_classifier.h \
+#           learning/PDB_state_space_sample.h \
+#           learning/probe_state_space_sample.h \
+#           learning/selective_max_heuristic.h \
+#           learning/state_space_sample.h \
+#           learning/state_vars_feature_extractor.h \
 
-HEADERS += pdbs/canonical_pdbs_heuristic.h \
-           pdbs/dominance_pruner.h \
-           pdbs/match_tree.h \
-           pdbs/max_cliques.h \
-           pdbs/pattern_generation_edelkamp.h \
-           pdbs/pattern_generation_haslum.h \
-           pdbs/pdb_heuristic.h \
-           pdbs/util.h \
-           pdbs/zero_one_pdbs_heuristic.h \
+#HEADERS += pdbs/canonical_pdbs_heuristic.h \
+#           pdbs/dominance_pruner.h \
+#           pdbs/match_tree.h \
+#           pdbs/max_cliques.h \
+#           pdbs/pattern_generation_edelkamp.h \
+#           pdbs/pattern_generation_haslum.h \
+#           pdbs/pdb_heuristic.h \
+#           pdbs/util.h \
+#           pdbs/zero_one_pdbs_heuristic.h \
+
+HEADERS += cegar/cegar_heuristic.h \
+           cegar/cegar_sum_heuristic.h \
+           cegar/abstract_state.h \
+           cegar/values.h \
+           cegar/abstraction.h \
+           cegar/split_tree.h \
+           cegar/utils.h \
 
 SHELL = /bin/bash
 
@@ -179,7 +187,9 @@ DEPEND = g++ -MM
 CCOPT = -Iext
 CCOPT += -g
 CCOPT += -m32
-CCOPT += -Wall -W -Wno-sign-compare -Wno-deprecated -ansi -pedantic -Werror -DSTATE_VAR_BYTES=$(STATE_VAR_BYTES)
+# The flag -std=c++11 is only supported by gcc 4.7 and later.
+CCOPT += -std=c++0x
+CCOPT += -Wall -W -Wno-sign-compare -Wno-deprecated -pedantic -Werror -DSTATE_VAR_BYTES=$(STATE_VAR_BYTES)
 
 ## The following lines contain workarounds for bugs when
 ## cross-compiling to 64 bit on 32-bit systems using gcc 4.4 or gcc
@@ -344,11 +354,63 @@ clean:
 	rm -f *~ *.pyc
 	rm -f Makefile.depend gmon.out PROFILE core
 	rm -f sas_plan
+	rm -f cegar_heuristic_test cegar_heuristic_test.o
+	rm -f gtest_main.a gtest-all.o gtest_main.a gtest_main.o
 
 distclean: clean
 	rm -f $(TARGET_RELEASE) $(TARGET_DEBUG) $(TARGET_PROFILE)
 
-## NOTE: If we just call gcc -MM on a source file that lives within a
+lint:
+	python ../../misc/cpplint.py \
+		--filter=-legal/copyright,-build/header_guard,-whitespace/labels,-build/include,-whitespace/line_length,-readability/todo,-build/namespaces \
+		cegar/*.h cegar/*.cc
+
+# The following lines contain build instructions for gtest.
+
+# Points to the root of Google Test.
+GTEST_DIR = ext/gtest
+
+GTEST_OPT = -I$(GTEST_DIR)/include -Wno-variadic-macros -Wno-long-long
+
+# All Google Test headers.  Usually you shouldn't change this
+# definition.
+GTEST_HEADERS = $(GTEST_DIR)/include/gtest/*.h \
+                $(GTEST_DIR)/include/gtest/internal/*.h
+
+# Usually you shouldn't tweak such internal variables, indicated by a
+# trailing _.
+GTEST_SRCS_ = $(GTEST_DIR)/src/*.cc $(GTEST_DIR)/src/*.h $(GTEST_HEADERS)
+
+# For simplicity and to avoid depending on Google Test's
+# implementation details, the dependencies specified below are
+# conservative and not optimized.  This is fine as Google Test
+# compiles fast and for ordinary users its source rarely changes.
+gtest-all.o : $(GTEST_SRCS_)
+	$(CC) -I$(GTEST_DIR) $(CCOPT) $(GTEST_OPT) -c $(GTEST_DIR)/src/gtest-all.cc
+
+gtest_main.o : $(GTEST_SRCS_)
+	$(CC) -I$(GTEST_DIR) $(CCOPT) $(GTEST_OPT) -c $(GTEST_DIR)/src/gtest_main.cc
+
+gtest_main.a : gtest-all.o gtest_main.o
+	$(AR) $(ARFLAGS) $@ $^
+
+cegar_heuristic_test.o: $(HEADERS) cegar/cegar_heuristic_test.cc
+	# Apparently the gtest libs or pthread has to come last.
+	$(CC) $(CCOPT) $(CCOPT_DEBUG) $(GTEST_OPT) -c cegar/cegar_heuristic_test.cc -o $@
+
+# A test should link with either gtest.a or gtest_main.a, depending on whether
+# it defines its own main() function.
+PLANNER_OBJ = .obj/planner.1.debug.o
+OTHER_OBJ = $(filter-out $(PLANNER_OBJ),$(OBJECTS_DEBUG))
+cegar_heuristic_test: $(OTHER_OBJ) cegar_heuristic_test.o gtest_main.a
+	# Apparently pthread has to come last.
+	$(CC) $(CCOPT) $(CCOPT_DEBUG) $(GTEST_OPT) $(LINKOPT) $(LINKOPT_DEBUG) $^ \
+          $(POSTLINKOPT) $(POSTLINKOPT_DEBUG) -o cegar_heuristic_test -lpthread
+
+test: cegar_heuristic_test
+	./cegar_heuristic_test
+
+## Note: If we just call gcc -MM on a source file that lives within a
 ## subdirectory, it will strip the directory part in the output. Hence
 ## the for loop with the sed call.
 
@@ -376,4 +438,4 @@ ifneq ($(MAKECMDGOALS),distclean)
 endif
 endif
 
-.PHONY: default all release debug profile clean distclean
+.PHONY: default all release debug profile clean distclean lint

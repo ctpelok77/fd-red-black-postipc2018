@@ -18,6 +18,11 @@ class State;
 class SuccessorGenerator;
 class Timer;
 
+namespace cegar_heuristic {
+class Abstraction;
+}
+
+
 bool test_goal(const State &state);
 void save_plan(const std::vector<const Operator *> &plan, int iter);
 int calculate_plan_cost(const std::vector<const Operator *> &plan);
@@ -33,7 +38,11 @@ bool are_mutex(const std::pair<int, int> &a, const std::pair<int, int> &b);
 
 extern void no_memory();
 
+void reset_original_goals_and_costs();
+
+
 extern bool g_use_metric;
+extern bool g_is_unit_cost;
 extern int g_min_action_cost;
 extern int g_max_action_cost;
 
@@ -57,5 +66,16 @@ extern LegacyCausalGraph *g_legacy_causal_graph;
 extern Timer g_timer;
 extern std::string g_plan_filename;
 extern RandomNumberGenerator g_rng;
+
+extern cegar_heuristic::Abstraction *g_cegar_abstraction;
+extern std::vector<std::pair<int, int> > g_original_goal;
+extern std::vector<int> g_original_op_costs;
+// Ordering of the variables in the task's causal graph.
+extern std::vector<int> g_causal_graph_ordering;
+// Positions in the causal graph ordering, ordered by variable.
+extern std::vector<int> g_causal_graph_ordering_pos;
+
+// Reserve some space that can be released when no memory is left.
+extern int g_memory_padding_mb;
 
 #endif
