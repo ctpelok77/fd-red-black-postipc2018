@@ -1,6 +1,7 @@
 #include "merge_and_shrink_heuristic.h"
 
 #include "abstraction.h"
+#include "labels.h"
 #include "shrink_fh.h"
 #include "variable_order_finder.h"
 
@@ -22,9 +23,18 @@ MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const Options &opts)
       shrink_strategy(opts.get<ShrinkStrategy *>("shrink_strategy")),
       use_label_reduction(opts.get<bool>("reduce_labels")),
       use_expensive_statistics(opts.get<bool>("expensive_statistics")) {
+    if (use_label_reduction) {
+        labels = new Labels(cost_type);
+    } else {
+        labels = 0;
+    }
 }
 
 MergeAndShrinkHeuristic::~MergeAndShrinkHeuristic() {
+    if (use_label_reduction) {
+        assert(labels);
+        delete labels;
+    }
 }
 
 void MergeAndShrinkHeuristic::dump_options() const {
@@ -89,7 +99,7 @@ Abstraction *MergeAndShrinkHeuristic::build_abstraction(bool is_first) {
 
     vector<Abstraction *> atomic_abstractions;
     Abstraction::build_atomic_abstractions(
-        is_unit_cost_problem(), get_cost_type(), atomic_abstractions);
+        is_unit_cost_problem(), atomic_abstractions, labels);
 
     cout << "Shrinking atomic abstractions..." << endl;
     for (size_t i = 0; i < atomic_abstractions.size(); ++i) {
@@ -137,16 +147,23 @@ Abstraction *MergeAndShrinkHeuristic::build_abstraction(bool is_first) {
         abstraction->statistics(use_expensive_statistics);
         other_abstraction->statistics(use_expensive_statistics);
 
-        abstraction->normalize(use_label_reduction);
+        abstraction->normalize(labels);
         abstraction->statistics(use_expensive_statistics);
 
         // Don't label-reduce the atomic abstraction -- see issue68.
         other_abstraction->normalize(false);
         other_abstraction->statistics(use_expensive_statistics);
 
+        //abstraction->dump();
+        //other_abstraction->dump();
+
         Abstraction *new_abstraction = new CompositeAbstraction(
-            is_unit_cost_problem(), get_cost_type(),
+            is_unit_cost_problem(),
+            labels,
             abstraction, other_abstraction);
+
+        //new_abstraction->dump();
+        //exit(0);
 
         abstraction->release_memory();
         other_abstraction->release_memory();
