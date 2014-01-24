@@ -1,8 +1,10 @@
 #include "merge_and_shrink_heuristic.h"
 
 #include "abstraction.h"
+#include "labels.h"
+#include "merge_strategy.h"
 #include "shrink_fh.h"
-#include "variable_order_finder.h"
+#include "shrink_strategy.h"
 
 #include "../globals.h"
 #include "../option_parser.h"
@@ -17,49 +19,22 @@ using namespace std;
 
 MergeAndShrinkHeuristic::MergeAndShrinkHeuristic(const Options &opts)
     : Heuristic(opts),
-      merge_strategy(MergeStrategy(opts.get_enum("merge_strategy"))),
+      merge_strategy(opts.get<MergeStrategy *>("merge_strategy")),
       shrink_strategy(opts.get<ShrinkStrategy *>("shrink_strategy")),
-      use_label_reduction(opts.get<bool>("reduce_labels")),
       use_expensive_statistics(opts.get<bool>("expensive_statistics")) {
+    labels = new Labels(cost_type, LabelReduction(opts.get_enum("label_reduction")));
 }
 
 MergeAndShrinkHeuristic::~MergeAndShrinkHeuristic() {
+    delete merge_strategy;
+    delete labels;
 }
 
 void MergeAndShrinkHeuristic::dump_options() const {
-    cout << "Merge strategy: ";
-    switch (merge_strategy) {
-    case MERGE_LINEAR_CG_GOAL_LEVEL:
-        cout << "linear CG/GOAL, tie breaking on level (main)";
-        break;
-    case MERGE_LINEAR_CG_GOAL_RANDOM:
-        cout << "linear CG/GOAL, tie breaking random";
-        break;
-    case MERGE_LINEAR_GOAL_CG_LEVEL:
-        cout << "linear GOAL/CG, tie breaking on level";
-        break;
-    case MERGE_LINEAR_RANDOM:
-        cout << "linear random";
-        break;
-    case MERGE_DFP:
-        cout << "Draeger/Finkbeiner/Podelski" << endl;
-        cerr << "DFP merge strategy not implemented." << endl;
-        exit_with(EXIT_UNSUPPORTED);
-        break;
-    case MERGE_LINEAR_LEVEL:
-        cout << "linear by level";
-        break;
-    case MERGE_LINEAR_REVERSE_LEVEL:
-        cout << "linear by reverse level";
-        break;
-    default:
-        ABORT("Unknown merge strategy.");
-    }
-    cout << endl;
+    merge_strategy->dump_options();
     shrink_strategy->dump_options();
-    cout << "Label reduction: "
-         << (use_label_reduction ? "enabled" : "disabled") << endl
-         << "Expensive statistics: "
+    labels->dump_options();
+    cout << "Expensive statistics: "
          << (use_expensive_statistics ? "enabled" : "disabled") << endl;
 }
 
@@ -86,11 +61,15 @@ Abstraction *MergeAndShrinkHeuristic::build_abstraction() {
 
     vector<Abstraction *> atomic_abstractions;
     Abstraction::build_atomic_abstractions(
-        is_unit_cost_problem(), get_cost_type(), atomic_abstractions);
+        is_unit_cost_problem(), atomic_abstractions, labels);
+    // vector of all abstractions. entries with 0 have been merged.
+    vector<Abstraction *> all_abstractions(atomic_abstractions);
 
     cout << "Shrinking atomic abstractions..." << endl;
     for (size_t i = 0; i < atomic_abstractions.size(); ++i) {
+        assert(atomic_abstractions[i]->sorted_unique());
         atomic_abstractions[i]->compute_distances();
+        atomic_abstractions[i]->dump();
         if (!atomic_abstractions[i]->is_solvable())
             return atomic_abstractions[i];
         shrink_strategy->shrink_atomic(*atomic_abstractions[i]);
@@ -98,26 +77,46 @@ Abstraction *MergeAndShrinkHeuristic::build_abstraction() {
 
     cout << "Merging abstractions..." << endl;
 
-    VariableOrderFinder order(merge_strategy);
-
-    int var_no = order.next();
-    cout << "First variable: #" << var_no << endl;
-    Abstraction *abstraction = atomic_abstractions[var_no];
-    abstraction->statistics(use_expensive_statistics);
-
-    while (!order.done()) {
-        int var_no = order.next();
-        cout << "Next variable: #" << var_no << endl;
-        Abstraction *other_abstraction = atomic_abstractions[var_no];
+    int var_first = -1;
+    Abstraction *abstraction = 0;
+    int total_reduced_labels = 0;
+    vector<int> variable_order;
+    // TODO: reconsider in which oder things are done in the main loop
+    while (!merge_strategy->done()) {
+        pair<int, int> next_vars;
+        merge_strategy->get_next(all_abstractions, next_vars);
+        if (var_first == -1) {
+            var_first = next_vars.first;
+        }
+        int var_one = next_vars.first;
+        if (merge_strategy->name() == "linear") {
+            assert(var_first == var_one);
+        }
+        variable_order.push_back(var_one);
+        cout << "Index one: " << var_one << endl;
+        abstraction = all_abstractions[var_one];
+        assert(abstraction);
+        abstraction->statistics(use_expensive_statistics);
+        int var_two = next_vars.second;
+        variable_order.push_back(var_two);
+        cout << "Index two: " << var_two << endl;
+        Abstraction *other_abstraction = all_abstractions[var_two];
+        assert(other_abstraction);
+        other_abstraction->statistics(use_expensive_statistics);
 
         // TODO: When using nonlinear merge strategies, make sure not
         // to normalize multiple parts of a composite. See issue68.
+        // Note: do not reduce labels several times for the same abstraction!
+        bool reduced_labels = false;
         if (shrink_strategy->reduce_labels_before_shrinking()) {
-            abstraction->normalize(use_label_reduction);
-            other_abstraction->normalize(false);
+            total_reduced_labels += labels->reduce(var_one, all_abstractions);
+            reduced_labels = true;
+            abstraction->normalize();
+            other_abstraction->normalize();
         }
 
         abstraction->compute_distances();
+        // TODO: check for which abstraction?
         if (!abstraction->is_solvable())
             return abstraction;
 
@@ -134,15 +133,17 @@ Abstraction *MergeAndShrinkHeuristic::build_abstraction() {
         abstraction->statistics(use_expensive_statistics);
         other_abstraction->statistics(use_expensive_statistics);
 
-        abstraction->normalize(use_label_reduction);
+        if (!reduced_labels) {
+            total_reduced_labels += labels->reduce(var_one, all_abstractions);
+        }
+        abstraction->normalize();
         abstraction->statistics(use_expensive_statistics);
-
-        // Don't label-reduce the atomic abstraction -- see issue68.
-        other_abstraction->normalize(false);
+        other_abstraction->normalize();
         other_abstraction->statistics(use_expensive_statistics);
 
         Abstraction *new_abstraction = new CompositeAbstraction(
-            is_unit_cost_problem(), get_cost_type(),
+            is_unit_cost_problem(),
+            labels,
             abstraction, other_abstraction);
 
         abstraction->release_memory();
@@ -150,6 +151,11 @@ Abstraction *MergeAndShrinkHeuristic::build_abstraction() {
 
         abstraction = new_abstraction;
         abstraction->statistics(use_expensive_statistics);
+
+        cout << "Number of reduced labels so far: " << total_reduced_labels << endl;
+
+        all_abstractions[var_one] = abstraction;
+        all_abstractions[var_two] = 0;
     }
 
     abstraction->compute_distances();
@@ -162,6 +168,13 @@ Abstraction *MergeAndShrinkHeuristic::build_abstraction() {
 
     abstraction->statistics(use_expensive_statistics);
     abstraction->release_memory();
+
+    cout << "Final number of reduced labels: " << total_reduced_labels << endl;
+    cout << "Order of merged indices: ";
+    for (size_t i = 1; i < variable_order.size(); i += 2) {
+        cout << variable_order[i - 1] << " " << variable_order[i] << ", ";
+    }
+    cout << endl;
     return abstraction;
 }
 
@@ -206,22 +219,10 @@ static Heuristic *_parse(OptionParser &parser) {
     parser.document_property("safe", "yes");
     parser.document_property("preferred operators", "no");
 
-    // TODO: better documentation what each parameter does
-    vector<string> merge_strategies;
-    //TODO: it's a bit dangerous that the merge strategies here
-    // have to be specified exactly in the same order
-    // as in the enum definition. Try to find a way around this,
-    // or at least raise an error when the order is wrong.
-    merge_strategies.push_back("MERGE_LINEAR_CG_GOAL_LEVEL");
-    merge_strategies.push_back("MERGE_LINEAR_CG_GOAL_RANDOM");
-    merge_strategies.push_back("MERGE_LINEAR_GOAL_CG_LEVEL");
-    merge_strategies.push_back("MERGE_LINEAR_RANDOM");
-    merge_strategies.push_back("MERGE_DFP");
-    merge_strategies.push_back("MERGE_LINEAR_LEVEL");
-    merge_strategies.push_back("MERGE_LINEAR_REVERSE_LEVEL");
-    parser.add_enum_option("merge_strategy", merge_strategies,
-                           "merge strategy",
-                           "MERGE_LINEAR_CG_GOAL_LEVEL");
+    parser.add_option<MergeStrategy *>(
+        "merge_strategy",
+        "merge strategy; choose between merge_linear or merge_non_linear",
+        "merge_linear");
 
     parser.add_option<ShrinkStrategy *>(
         "shrink_strategy",
@@ -260,9 +261,13 @@ static Heuristic *_parse(OptionParser &parser) {
                   "the heuristic in the paper."));
     parser.document_values("shrink_strategy", shrink_value_explanations);
 
-    // TODO: Rename option name to "use_label_reduction" to be
-    //       consistent with the papers?
-    parser.add_option<bool>("reduce_labels", "enable label reduction", "true");
+    vector<string> label_reduction;
+    label_reduction.push_back("NONE");
+    label_reduction.push_back("APPROXIMATIVE");
+    label_reduction.push_back("APPROXIMATIVE_WITH_FIXPOINT");
+    label_reduction.push_back("EXACT");
+    label_reduction.push_back("EXACT_WITH_FIXPOINT");
+    parser.add_enum_option("label_reduction", label_reduction, "label reduction method", "APPROXIMATIVE");
     parser.add_option<bool>("expensive_statistics", "show statistics on \"unique unlabeled edges\" (WARNING: "
                             "these are *very* slow -- check the warning in the output)", "false");
     Heuristic::add_options_to_parser(parser);
