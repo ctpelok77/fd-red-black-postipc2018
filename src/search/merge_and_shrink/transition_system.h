@@ -102,7 +102,7 @@ protected:
 
     virtual AbstractStateRef get_abstract_state(const GlobalState &state) const = 0;
     virtual void apply_abstraction_to_lookup_table(
-            const std::vector<AbstractStateRef> &abstraction_mapping) = 0;
+        const std::vector<AbstractStateRef> &abstraction_mapping) = 0;
     virtual int memory_estimate() const;
 public:
     TransitionSystem(Labels *labels);
@@ -195,7 +195,7 @@ protected:
     virtual AbstractStateRef get_abstract_state(const GlobalState &state) const;
     virtual int memory_estimate() const;
 public:
-    CompositeTransitionSystem(Labels *labels, TransitionSystem *abs1, TransitionSystem *abs2);
+    CompositeTransitionSystem(Labels *labels, TransitionSystem *ts1, TransitionSystem *ts2);
     virtual ~CompositeTransitionSystem();
 };
 
