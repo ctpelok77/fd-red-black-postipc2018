@@ -48,8 +48,7 @@ const int TransitionSystem::DISTANCE_UNKNOWN;
 TransitionSystem::TransitionSystem(Labels *labels_)
     : labels(labels_), num_labels(labels->get_size()),
       transitions_by_label(g_operators.empty() ? 0 : g_operators.size() * 2 - 1),
-      relevant_labels(transitions_by_label.size(), false),
-      transitions_sorted_unique(true), peak_memory(0) {
+      relevant_labels(transitions_by_label.size(), false), peak_memory(0) {
     clear_distances();
 }
 
@@ -99,15 +98,16 @@ int TransitionSystem::get_num_labels() const {
     return labels->get_size();
 }
 
-void TransitionSystem::compute_label_ranks(vector<int> &label_ranks) {
+void TransitionSystem::compute_label_ranks(vector<int> &label_ranks) const {
     // transition system needs to be normalized when considering labels and their
     // transitions
     if (!is_normalized()) {
-        normalize();
+        exit_with(EXIT_CRITICAL_ERROR);
     }
     // distances must be computed
-    if (max_h == DISTANCE_UNKNOWN) {
-        compute_distances_and_prune();
+    if (!(are_distances_computed())) {
+        exit_with(EXIT_CRITICAL_ERROR);
+        //compute_distances_and_prune();
     }
     assert(label_ranks.empty());
     label_ranks.reserve(transitions_by_label.size());
@@ -398,7 +398,7 @@ bool TransitionSystem::are_transitions_sorted_unique() const {
 }
 
 bool TransitionSystem::is_normalized() const {
-    return (num_labels == labels->get_size()) && transitions_sorted_unique;
+    return (num_labels == labels->get_size()) && are_transitions_sorted_unique();
 }
 
 void TransitionSystem::normalize() {
@@ -407,7 +407,7 @@ void TransitionSystem::normalize() {
        object. */
 
     if (is_normalized()) {
-        return;
+        exit_with(EXIT_CRITICAL_ERROR);
     }
     //cout << tag() << "normalizing" << endl;
 
@@ -552,7 +552,6 @@ void TransitionSystem::normalize() {
     // Transition system has been normalized, restore invariant
     assert(are_transitions_sorted_unique());
     num_labels = labels->get_size();
-    transitions_sorted_unique = true;
     assert(is_normalized());
 }
 
@@ -705,6 +704,7 @@ void TransitionSystem::build_atomic_transition_systems(vector<TransitionSystem *
     for (size_t i = 0; i < result.size(); ++i) {
         assert(result[i]->are_transitions_sorted_unique());
         assert(result[i]->is_normalized());
+        result[i]->compute_distances_and_prune();
     }
 }
 
@@ -853,7 +853,9 @@ CompositeTransitionSystem::CompositeTransitionSystem(Labels *labels,
 
     // TODO do not check if transitions are sorted but just assume they are not?
     if (!are_transitions_sorted_unique())
-        transitions_sorted_unique = false;
+        normalize();
+
+    compute_distances_and_prune();
 }
 
 CompositeTransitionSystem::~CompositeTransitionSystem() {
@@ -1011,9 +1013,21 @@ void TransitionSystem::apply_abstraction(
         clear_distances();
     }
 
+    // Observation from some experiments in the context of making transition
+    // systems always be valid: including the normalize below or not
+    // drastically seems to influence memory usage. Memory usage increases a
+    // lot if normalizing here after every shrink. The reason for this is
+    // somewhat unclear.
+
     // TODO do not check if transitions are sorted but just assume they are not?
     if (!are_transitions_sorted_unique())
-        transitions_sorted_unique = false;
+        normalize();
+
+    compute_distances_and_prune();
+}
+
+void TransitionSystem::apply_label_reduction() {
+    normalize();
 }
 
 bool TransitionSystem::is_solvable() const {
