@@ -332,7 +332,7 @@ void TransitionSystem::normalize() {
        object. */
 
     if (is_normalized()) {
-        return;
+        exit_with(EXIT_CRITICAL_ERROR);
     }
     //cout << tag() << "normalizing" << endl;
 
@@ -630,6 +630,7 @@ void TransitionSystem::build_atomic_transition_systems(vector<TransitionSystem *
     for (size_t i = 0; i < result.size(); ++i) {
         assert(result[i]->are_transitions_sorted_unique());
         assert(result[i]->is_normalized());
+        result[i]->compute_distances_and_prune();
     }
 }
 
@@ -759,12 +760,30 @@ void TransitionSystem::apply_abstraction(
         clear_distances();
     }
 
+    /*
+      Observation from some experiments in the context of making transition
+      systems always be valid: including the normalize below or not
+      drastically seems to influence memory usage. Memory usage increases a
+      lot if normalizing here after every shrink. The reason for this is
+      somewhat unclear.
+    */
+
     // TODO do not check if transitions are sorted but just assume they are not?
-    if (!are_transitions_sorted_unique())
+    if (!are_transitions_sorted_unique()) {
         transitions_sorted_unique = false;
+        normalize();
+    }
+
+    compute_distances_and_prune();
+}
+
+bool TransitionSystem::is_solvable() const {
+    assert(are_distances_computed());
+    return init_state != PRUNED_STATE;
 }
 
 int TransitionSystem::get_cost(const GlobalState &state) const {
+    assert(are_distances_computed());
     int abs_state = get_abstract_state(state);
     if (abs_state == PRUNED_STATE)
         return -1;
@@ -876,15 +895,15 @@ int TransitionSystem::get_num_labels() const {
     return labels->get_size();
 }
 
-void TransitionSystem::compute_label_ranks(vector<int> &label_ranks) {
+void TransitionSystem::compute_label_ranks(vector<int> &label_ranks) const {
     // transition system needs to be normalized when considering labels and their
     // transitions
     if (!is_normalized()) {
-        normalize();
+        exit_with(EXIT_CRITICAL_ERROR);
     }
     // distances must be computed
-    if (max_h == DISTANCE_UNKNOWN) {
-        compute_distances_and_prune();
+    if (!(are_distances_computed())) {
+        exit_with(EXIT_CRITICAL_ERROR);
     }
     assert(label_ranks.empty());
     label_ranks.reserve(transitions_by_label.size());
@@ -1081,8 +1100,12 @@ CompositeTransitionSystem::CompositeTransitionSystem(Labels *labels,
     }
 
     // TODO do not check if transitions are sorted but just assume they are not?
-    if (!are_transitions_sorted_unique())
+    if (!are_transitions_sorted_unique()) {
         transitions_sorted_unique = false;
+        normalize();
+    }
+
+    compute_distances_and_prune();
 }
 
 CompositeTransitionSystem::~CompositeTransitionSystem() {
