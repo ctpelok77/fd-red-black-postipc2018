@@ -89,6 +89,14 @@ public:
     }
 
     int get_cost() const {return cost; }
+    void set_cost(int new_cost) {
+        assert(new_cost >= 0);
+        cost = new_cost;
+    }
+
+    void rename_fact(int variable, int before, int after);
+
+    void keep_single_effect(int var, int value);
 };
 
 #endif
