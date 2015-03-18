@@ -41,7 +41,9 @@ HEADERS = \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
+          cost_adapted_task.h \
           countdown_timer.h \
+          delegating_task.h \
           domain_transition_graph.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
@@ -87,7 +89,8 @@ HEADERS = \
           open_lists/standard_scalar_open_list.h \
           open_lists/tiebreaking_open_list.h \
           \
-          lp_solver_interface.h \
+          lp_internals.h \
+          lp_solver.h \
 
 ## Each of the following "HEADERS += ..." constructs defines a
 ## "plugin" feature that can be enabled or disabled by simply
