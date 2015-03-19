@@ -213,6 +213,7 @@ public:
     }
 
 private:
+    std::string unparsed_config;
     Options opts;
     ParseTree parse_tree;
     bool dry_run_;
@@ -220,6 +221,8 @@ private:
 
     ParseTree::sibling_iterator next_unparsed_argument;
     std::vector<std::string> valid_keys;
+
+    void set_unparsed_config();
 };
 
 //Definitions of OptionParsers template functions:
