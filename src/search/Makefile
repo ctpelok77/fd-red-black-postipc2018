@@ -37,6 +37,11 @@ DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
 DOWNWARD_OS ?= auto
 
 
+# TODO: Add removed search algorithms back in.
+
+# TODO: Add ipc_max_heuristic.cc back in (or make the functionality
+#       work some other way.)
+
 HEADERS = \
           axioms.h \
           causal_graph.h \
@@ -46,8 +51,9 @@ HEADERS = \
           delegating_task.h \
           domain_transition_graph.h \
           eager_search.h \
-          enforced_hill_climbing_search.h \
           equivalence_relation.h \
+          evaluation_context.h \
+          evaluation_result.h \
           exact_timer.h \
           g_evaluator.h \
           global_operator.h \
@@ -55,9 +61,6 @@ HEADERS = \
           globals.h \
           heuristic.h \
           int_packer.h \
-          ipc_max_heuristic.h \
-          iterated_search.h \
-          lazy_search.h \
           max_evaluator.h \
           operator_cost.h \
           option_parser.h \
@@ -68,10 +71,12 @@ HEADERS = \
           relaxation_heuristic.h \
           rng.h \
           root_task.h \
+          scalar_evaluator.h \
           search_engine.h \
           search_node_info.h \
           search_progress.h \
           search_space.h \
+          search_statistics.h \
           state_id.h \
           state_registry.h \
           successor_generator.h \
@@ -84,7 +89,8 @@ HEADERS = \
           weighted_evaluator.h \
           \
           open_lists/alternation_open_list.h \
-          open_lists/open_list_buckets.h \
+          open_lists/bucket_open_list.h \
+          open_lists/open_list.h \
           open_lists/pareto_open_list.h \
           open_lists/standard_scalar_open_list.h \
           open_lists/tiebreaking_open_list.h \
@@ -122,9 +128,11 @@ HEADERS += merge_and_shrink/labels.h \
            merge_and_shrink/shrink_strategy.h \
            merge_and_shrink/transition_system.h \
 
+# TODO: Put this back into the landmark block:
+#          landmarks/lama_ff_synergy.h \
+
 HEADERS += landmarks/exploration.h \
            landmarks/h_m_landmarks.h \
-           landmarks/lama_ff_synergy.h \
            landmarks/landmark_cost_assignment.h \
            landmarks/landmark_count_heuristic.h \
            landmarks/landmark_status_manager.h \
