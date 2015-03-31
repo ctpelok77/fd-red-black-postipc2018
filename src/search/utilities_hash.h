@@ -13,7 +13,6 @@
 template<typename T>
 inline void hash_combine(size_t &hash, const T &value) {
     const std::hash<T> hasher;
-    // The combination of hash values is based on Boost.
     /*
       The combination of hash values is based on issue 6.18 in
       http://www.open-std.org/JTC1/SC22/WG21/docs/papers/2005/n1756.pdf.
