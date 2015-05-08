@@ -1,10 +1,8 @@
 #ifndef ITERATED_SEARCH_H
 #define ITERATED_SEARCH_H
 
+#include "option_parser_util.h"
 #include "search_engine.h"
-#include "globals.h"
-#include "search_progress.h"
-#include "option_parser.h"
 
 class Options;
 
@@ -30,10 +28,10 @@ class IteratedSearch : public SearchEngine {
     virtual void initialize();
     virtual SearchStatus step();
 public:
-    IteratedSearch(const Options &opts);
-    virtual ~IteratedSearch();
+    explicit IteratedSearch(const Options &opts);
+    virtual ~IteratedSearch() override;
     virtual void save_plan_if_necessary() const;
-    void statistics() const;
+    virtual void print_statistics() const override;
 };
 
 #endif
