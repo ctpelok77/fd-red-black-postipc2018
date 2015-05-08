@@ -1,6 +1,9 @@
 #include "iterated_search.h"
+
 #include "plugin.h"
+
 #include "ext/tree_util.hh"
+
 #include <limits>
 
 IteratedSearch::IteratedSearch(const Options &opts)
@@ -47,7 +50,7 @@ SearchEngine *IteratedSearch::create_phase(int p) {
         if (repeat_last_phase && last_phase_found_solution) {
             return get_search_engine(engine_configs.size() - 1);
         } else {
-            return NULL;
+            return nullptr;
         }
     }
 
@@ -56,7 +59,7 @@ SearchEngine *IteratedSearch::create_phase(int p) {
 
 SearchStatus IteratedSearch::step() {
     current_search = create_phase(phase);
-    if (current_search == NULL) {
+    if (!current_search) {
         return found_solution() ? SOLVED : FAILED;
     }
     if (pass_bound) {
@@ -79,19 +82,15 @@ SearchStatus IteratedSearch::step() {
             set_plan(found_plan);
         }
     }
-    current_search->statistics();
-    search_progress.inc_expanded(
-        current_search->get_search_progress().get_expanded());
-    search_progress.inc_evaluated_states(
-        current_search->get_search_progress().get_evaluated_states());
-    search_progress.inc_evaluations(
-        current_search->get_search_progress().get_evaluations());
-    search_progress.inc_generated(
-        current_search->get_search_progress().get_generated());
-    search_progress.inc_generated_ops(
-        current_search->get_search_progress().get_generated_ops());
-    search_progress.inc_reopened(
-        current_search->get_search_progress().get_reopened());
+    current_search->print_statistics();
+
+    const SearchStatistics current_stats = current_search->get_statistics();
+    statistics.inc_expanded(current_stats.get_expanded());
+    statistics.inc_evaluated_states(current_stats.get_evaluated_states());
+    statistics.inc_evaluations(current_stats.get_evaluations());
+    statistics.inc_generated(current_stats.get_generated());
+    statistics.inc_generated_ops(current_stats.get_generated_ops());
+    statistics.inc_reopened(current_stats.get_reopened());
 
     return step_return_value();
 }
@@ -119,13 +118,13 @@ SearchStatus IteratedSearch::step_return_value() {
     }
 }
 
-void IteratedSearch::statistics() const {
+void IteratedSearch::print_statistics() const {
     cout << "Cumulative statistics:" << endl;
-    search_progress.print_statistics();
+    statistics.print_detailed_statistics();
 }
 
 void IteratedSearch::save_plan_if_necessary() const {
-    // Don't need to save here, as we automatically save after
+    // We don't need to save here, as we automatically save after
     // each successful search iteration.
 }
 
@@ -179,19 +178,16 @@ static SearchEngine *_parse(OptionParser &parser) {
     opts.verify_list_non_empty<ParseTree>("engine_configs");
 
     if (parser.help_mode()) {
-        return 0;
+        return nullptr;
     } else if (parser.dry_run()) {
         //check if the supplied search engines can be parsed
-        vector<ParseTree> configs = opts.get_list<ParseTree>("engine_configs");
-        for (size_t i = 0; i < configs.size(); ++i) {
-            OptionParser test_parser(configs[i], true);
+        for (ParseTree config : opts.get_list<ParseTree>("engine_configs")) {
+            OptionParser test_parser(config, true);
             test_parser.start_parsing<SearchEngine *>();
         }
-        return 0;
+        return nullptr;
     } else {
-        IteratedSearch *engine = new IteratedSearch(opts);
-
-        return engine;
+        return new IteratedSearch(opts);
     }
 }
 

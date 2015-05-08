@@ -37,6 +37,11 @@ DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
 DOWNWARD_OS ?= auto
 
 
+# TODO: Add removed search algorithms back in.
+
+# TODO: Add ipc_max_heuristic.cc back in (or make the functionality
+#       work some other way.)
+
 HEADERS = \
           axioms.h \
           causal_graph.h \
@@ -45,9 +50,12 @@ HEADERS = \
           countdown_timer.h \
           delegating_task.h \
           domain_transition_graph.h \
+          eager_evaluation_context.h \
           eager_search.h \
           enforced_hill_climbing_search.h \
           equivalence_relation.h \
+          evaluation_context.h \
+          evaluation_result.h \
           exact_timer.h \
           g_evaluator.h \
           global_operator.h \
@@ -55,8 +63,8 @@ HEADERS = \
           globals.h \
           heuristic.h \
           int_packer.h \
-          ipc_max_heuristic.h \
           iterated_search.h \
+          lazy_evaluation_context.h \
           lazy_search.h \
           max_evaluator.h \
           operator_cost.h \
@@ -68,10 +76,12 @@ HEADERS = \
           relaxation_heuristic.h \
           rng.h \
           root_task.h \
+          scalar_evaluator.h \
           search_engine.h \
           search_node_info.h \
           search_progress.h \
           search_space.h \
+          search_statistics.h \
           state_id.h \
           state_registry.h \
           successor_generator.h \
@@ -85,7 +95,8 @@ HEADERS = \
           weighted_evaluator.h \
           \
           open_lists/alternation_open_list.h \
-          open_lists/open_list_buckets.h \
+          open_lists/bucket_open_list.h \
+          open_lists/open_list.h \
           open_lists/pareto_open_list.h \
           open_lists/standard_scalar_open_list.h \
           open_lists/tiebreaking_open_list.h \
