@@ -53,6 +53,8 @@
 
 typedef std::vector<std::vector<int> > IntRelation;
 
+class AbstractTask;
+class TaskProxy;
 
 class CausalGraph {
     IntRelation pre_to_eff;
@@ -61,9 +63,13 @@ class CausalGraph {
 
     IntRelation successors;
     IntRelation predecessors;
+
+    void dump(const TaskProxy &task_proxy) const;
 public:
-    CausalGraph();
-    ~CausalGraph();
+    /* Use the factory function get_causal_graph to create causal graphs
+       to avoid creating more than one causal graph per AbstractTask */
+    CausalGraph(const TaskProxy &task_proxy);
+    ~CausalGraph() = default;
 
     /*
       All below methods querying neighbors (of some sort or other) of
@@ -102,8 +108,10 @@ public:
     const std::vector<int> &get_predecessors(int var) const {
         return predecessors[var];
     }
-
-    void dump() const;
 };
+
+/* Create or retrieve a causal graph from cache. If causal graphs are created
+   with this function, we build at most one causal graph per AbstractTask. */
+extern const CausalGraph &get_causal_graph(const AbstractTask *task);
 
 #endif

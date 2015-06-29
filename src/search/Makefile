@@ -37,6 +37,7 @@ DOWNWARD_LINK_RELEASE_STATICALLY ?= 1
 DOWNWARD_OS ?= auto
 
 HEADERS = \
+          abstract_task.h \
           axioms.h \
           causal_graph.h \
           combining_evaluator.h \
@@ -80,6 +81,7 @@ HEADERS = \
           state_registry.h \
           successor_generator.h \
           sum_evaluator.h \
+          task_proxy.h \
           task_tools.h \
           timer.h \
           tracer.h \
