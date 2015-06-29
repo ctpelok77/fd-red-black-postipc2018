@@ -60,12 +60,14 @@ public:
       the original concrete operator)
     */
     int get_cost() const {return cost; }
-    void dump(const std::vector<int> &pattern) const;
+    void dump(const std::vector<int> &pattern,
+              const TaskProxy &task_proxy) const;
 };
 
-// Implements a single PDB
-class GlobalOperator;
 class GlobalState;
+class OperatorProxy;
+
+// Implements a single PDB
 class PDBHeuristic : public Heuristic {
     std::vector<int> pattern;
 
@@ -98,12 +100,12 @@ class PDBHeuristic : public Heuristic {
 
     /*
       Computes all abstract operators for a given concrete operator (by
-      its global operator number). Initializes datastructures for initial
-      call to recursive method multiyply_out. variable_to_index maps
+      its global operator number). Initializes data structures for initial
+      call to recursive method multiply_out. variable_to_index maps
       variables in the task to their index in the pattern or -1.
     */
     void build_abstract_operators(
-        const GlobalOperator &op, int cost,
+        const OperatorProxy &op, int cost,
         const std::vector<int> &variable_to_index,
         std::vector<AbstractOperator> &operators);
 
@@ -135,17 +137,17 @@ class PDBHeuristic : public Heuristic {
     */
     bool is_goal_state(
         const std::size_t state_index,
-        const std::vector<std::pair<int, int> > &abstract_goal) const;
+        const std::vector<std::pair<int, int> > &abstract_goals) const;
 
     /*
       The given concrete state is used to calculate the index of the
       according abstract state. This is only used for table lookup
       (distances) during search.
     */
-    std::size_t hash_index(const GlobalState &state) const;
+    std::size_t hash_index(const State &state) const;
 protected:
     virtual void initialize() override;
-    virtual int compute_heuristic(const GlobalState &state) override;
+    virtual int compute_heuristic(const GlobalState &global_state) override;
 public:
     /*
       Important: It is assumed that the pattern (passed via Options) is
@@ -167,7 +169,7 @@ public:
         return pattern;
     }
 
-    // Returns the size (number of abstrat states) of the PDB
+    // Returns the size (number of abstract states) of the PDB
     std::size_t get_size() const {
         return num_states;
     }
@@ -176,14 +178,14 @@ public:
       Returns the average h-value over all states, where dead-ends are
       ignored (they neither increase the sum of all h-values nor the
       number of entries for the mean value calculation). If all states
-      are dead-ends, infinity is retuned.
+      are dead-ends, infinity is returned.
       Note: This is only calculated when called; avoid repeated calls to
       this method!
     */
     double compute_mean_finite_h() const;
 
     // Returns true iff op has an effect on a variable in the pattern.
-    bool is_operator_relevant(const GlobalOperator &op) const;
+    bool is_operator_relevant(const OperatorProxy &op) const;
 };
 
 #endif

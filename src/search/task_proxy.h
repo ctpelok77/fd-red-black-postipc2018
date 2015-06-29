@@ -11,6 +11,7 @@
 
 
 class AxiomsProxy;
+class CausalGraph;
 class ConditionsProxy;
 class EffectProxy;
 class EffectConditionsProxy;
@@ -536,6 +537,8 @@ public:
     State convert_global_state(const GlobalState &global_state) const {
         return State(*task, task->get_state_values(global_state));
     }
+
+    const CausalGraph &get_causal_graph() const;
 };
 
 
