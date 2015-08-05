@@ -28,6 +28,10 @@ template<class Entry>
 class OpenList;
 class AbstractTask;
 
+namespace cegar {
+class Decomposition;
+}
+
 
 struct ParseNode {
     ParseNode()
@@ -280,6 +284,13 @@ template <>
 struct TypeNamer<std::shared_ptr<AbstractTask> > {
     static std::string name() {
         return "AbstractTask";
+    }
+};
+
+template <>
+struct TypeNamer<std::shared_ptr<cegar::Decomposition> > {
+    static std::string name() {
+        return "Decomposition";
     }
 };
 

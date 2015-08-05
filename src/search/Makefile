@@ -100,6 +100,11 @@ HEADERS = \
           lp_internals.h \
           lp_solver.h \
 
+HEADERS += tasks/domain_abstracted_task.h \
+           tasks/domain_abstracted_task_factory.h \
+           tasks/modified_costs_task.h \
+           tasks/modified_goals_task.h \
+
 ## Each of the following "HEADERS += ..." constructs defines a
 ## "plugin" feature that can be enabled or disabled by simply
 ## commenting out the respective lines in the Makefile.
@@ -117,6 +122,18 @@ HEADERS += goal_count_heuristic.h
 HEADERS += hm_heuristic.h
 HEADERS += lm_cut_heuristic.h
 HEADERS += max_heuristic.h
+
+HEADERS += cegar/abstract_search.h \
+           cegar/abstract_state.h \
+           cegar/abstraction.h \
+           cegar/additive_cartesian_heuristic.h \
+           cegar/cartesian_heuristic.h \
+           cegar/decompositions.h \
+           cegar/domains.h \
+           cegar/split_selector.h \
+           cegar/split_tree.h \
+           cegar/utils.h \
+           cegar/utils_landmarks.h \
 
 HEADERS += merge_and_shrink/distances.h \
            merge_and_shrink/factored_transition_system.h \
