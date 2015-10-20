@@ -6,9 +6,9 @@ import subprocess
 import sys
 
 from . import call
-from . import exitcodes
 from . import limits
 from . import portfolio_runner
+from . import returncodes
 from . import util
 from .plan_manager import PlanManager
 
@@ -136,7 +136,7 @@ def run_search(args):
                 stdin=args.search_input,
                 time_limit=time_limit, memory_limit=memory_limit)
         except subprocess.CalledProcessError as err:
-            if err.returncode in exitcodes.EXPECTED_EXITCODES:
+            if err.returncode in returncodes.EXPECTED_EXITCODES:
                 return err.returncode
             else:
                 raise
