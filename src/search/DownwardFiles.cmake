@@ -320,6 +320,35 @@ fast_downward_plugin(
 )
 
 fast_downward_plugin(
+    NAME EXTRA_TASKS
+    HELP "Non-core task transformations"
+    SOURCES
+        tasks/domain_abstracted_task.cc
+        tasks/domain_abstracted_task_factory.cc
+        tasks/modified_costs_task.cc
+        tasks/modified_goals_task.cc
+    DEPENDENCY_ONLY
+)
+
+fast_downward_plugin(
+    NAME CEGAR
+    HELP "Plugin containing the code for CEGAR heuristics"
+    SOURCES
+        cegar/abstraction.cc
+        cegar/abstract_search.cc
+        cegar/abstract_state.cc
+        cegar/additive_cartesian_heuristic.cc
+        cegar/cartesian_heuristic.cc
+        cegar/decompositions.cc
+        cegar/domains.cc
+        cegar/split_selector.cc
+        cegar/split_tree.cc
+        cegar/utils.cc
+        cegar/utils_landmarks.cc
+    DEPENDS EXTRA_TASKS
+)
+
+fast_downward_plugin(
     NAME MAS_HEURISTIC
     HELP "The Merge-and-Shrink heuristic"
     SOURCES
