@@ -61,14 +61,23 @@ vector<int> DomainAbstractedTask::get_initial_state_values() const {
     return initial_state_values;
 }
 
-vector<int> DomainAbstractedTask::get_state_values(
-    const GlobalState &global_state) const {
-    int num_vars = domain_size.size();
-    vector<int> state_data(num_vars);
-    for (int var = 0; var < num_vars; ++var) {
-        int value = value_map[var][global_state[var]];
-        state_data[var] = value;
+vector<int> DomainAbstractedTask::convert_state_values(
+    const vector<int> &ancestor_state_values,
+    const AbstractTask *ancestor_task) const {
+    if (this == ancestor_task) {
+        return ancestor_state_values;
     }
-    return state_data;
+
+    vector<int> values = parent->convert_state_values(
+        ancestor_state_values, ancestor_task);
+
+    int num_vars = domain_size.size();
+    for (int var = 0; var < num_vars; ++var) {
+        int old_value = values[var];
+        int new_value = value_map[var][old_value];
+        values[var] = new_value;
+    }
+    return values;
 }
+
 }
