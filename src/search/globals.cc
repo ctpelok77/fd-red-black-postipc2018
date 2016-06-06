@@ -262,10 +262,6 @@ void read_everything(istream &in) {
     g_state_packer = new IntPacker(g_variable_domain);
     cout << "done! [t=" << utils::g_timer << "]" << endl;
 
-    // NOTE: state registry stores the sizes of the state, so must be
-    // built after the problem has been read in.
-    g_state_registry = new StateRegistry;
-
     int num_vars = g_variable_domain.size();
     int num_facts = 0;
     for (int var = 0; var < num_vars; ++var)
@@ -293,7 +289,7 @@ void dump_everything() {
     for (size_t i = 0; i < g_variable_name.size(); ++i)
         cout << "  " << g_variable_name[i]
              << " (range " << g_variable_domain[i] << ")" << endl;
-    GlobalState initial_state = g_initial_state();
+    State initial_state = TaskProxy(*g_root_task()).get_initial_state();
     cout << "Initial State (PDDL):" << endl;
     initial_state.dump_pddl();
     cout << "Initial State (FDR):" << endl;
@@ -360,10 +356,6 @@ bool are_mutex(const Fact &a, const Fact &b) {
     return bool(g_inconsistent_facts[a.var][a.value].count(b));
 }
 
-const GlobalState &g_initial_state() {
-    return g_state_registry->get_initial_state();
-}
-
 const shared_ptr<AbstractTask> g_root_task() {
     static shared_ptr<AbstractTask> root_task = make_shared<tasks::RootTask>();
     return root_task;
@@ -395,6 +387,5 @@ SuccessorGenerator *g_successor_generator;
 string g_plan_filename = "sas_plan";
 int g_num_previously_generated_plans = 0;
 bool g_is_part_of_anytime_portfolio = false;
-StateRegistry *g_state_registry = 0;
 
 utils::Log g_log;
