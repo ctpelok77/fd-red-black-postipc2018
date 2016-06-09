@@ -68,12 +68,14 @@ struct Flaw {
 Abstraction::Abstraction(
     const shared_ptr<AbstractTask> task,
     int max_states,
+    int max_arcs,
     double max_time,
     bool use_general_costs,
     PickSplit pick,
     bool debug)
     : task_proxy(*task),
       max_states(max_states),
+      max_arcs(max_arcs),
       use_general_costs(use_general_costs),
       abstract_search(get_operator_costs(task_proxy), states),
       split_selector(task, pick),
@@ -86,6 +88,7 @@ Abstraction::Abstraction(
     assert(max_states >= 1);
     g_log << "Start building abstraction." << endl;
     cout << "Maximum number of states: " << max_states << endl;
+    cout << "Maximum number of arcs: " << max_arcs << endl;
     build();
     g_log << "Done building abstraction." << endl;
     cout << "Time for building abstraction: " << timer << endl;
@@ -142,6 +145,7 @@ bool Abstraction::may_keep_refining() const {
        Without doing so, the algorithm would be more deterministic. */
     return utils::extra_memory_padding_is_reserved() &&
            get_num_states() < max_states &&
+           compute_num_arcs() < max_arcs &&
            !timer.is_expired();
 }
 
@@ -205,8 +209,10 @@ void Abstraction::refine(AbstractState *state, int var, const vector<int> &wante
     }
 
     int num_states = get_num_states();
-    if (num_states % 1000 == 0)
-        g_log << "Abstract states: " << num_states << "/" << max_states << endl;
+    if (num_states % 1000 == 0) {
+        g_log << num_states << "/" << max_states << " states, "
+              << compute_num_arcs() << "/" << max_arcs << " arcs" << endl;
+    }
 
     delete state;
 }
@@ -278,6 +284,14 @@ void Abstraction::update_h_and_g_values() {
     // Update g values.
     // TODO: updating h values overwrites g values. Find better solution.
     abstract_search.forward_dijkstra(init);
+}
+
+int Abstraction::compute_num_arcs() const {
+    int num_arcs = 0;
+    for (const AbstractState *state : states) {
+        num_arcs += state->get_outgoing_arcs().size();
+    }
+    return num_arcs;
 }
 
 int Abstraction::get_h_value_of_initial_state() const {
@@ -353,8 +367,8 @@ void Abstraction::print_statistics() {
     cout << "Dead ends: " << dead_ends << endl;
     cout << "Init h: " << get_h_value_of_initial_state() << endl;
 
-    cout << "Transitions: " << total_incoming_arcs << endl;
     cout << "Self-loops: " << total_loops << endl;
+    cout << "Arcs: " << total_outgoing_arcs << endl;
 
     cout << "Deviations: " << deviations << endl;
     cout << "Unmet preconditions: " << unmet_preconditions << endl;
