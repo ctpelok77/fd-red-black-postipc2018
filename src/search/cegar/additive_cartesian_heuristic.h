@@ -42,6 +42,9 @@
       Domains
         Store the Cartesian set of values in an abstract state.
 
+    TransitionSystem
+      Rewire transitions after each split.
+
     AbstractSearch
       Find an abstract solution using A*. Compute goal distances for
       abstract states.
@@ -68,6 +71,7 @@ class SubtaskGenerator;
 class AdditiveCartesianHeuristic : public Heuristic {
     std::vector<std::shared_ptr<SubtaskGenerator>> subtask_generators;
     const int max_states;
+    const int max_non_looping_transitions;
     utils::CountdownTimer timer;
     bool use_general_costs;
     PickSplit pick_split;
@@ -75,6 +79,7 @@ class AdditiveCartesianHeuristic : public Heuristic {
     std::vector<std::unique_ptr<CartesianHeuristicFunction>> heuristic_functions;
     int num_abstractions;
     int num_states;
+    int num_non_looping_transitions;
     State initial_state;
 
     void reduce_remaining_costs(const std::vector<int> &saturated_costs);

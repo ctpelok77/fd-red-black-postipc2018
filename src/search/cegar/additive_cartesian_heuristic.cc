@@ -41,11 +41,13 @@ AdditiveCartesianHeuristic::AdditiveCartesianHeuristic(const Options &opts)
     : Heuristic(opts),
       subtask_generators(opts.get_list<shared_ptr<SubtaskGenerator>>("subtasks")),
       max_states(opts.get<int>("max_states")),
+      max_non_looping_transitions(opts.get<int>("max_transitions")),
       timer(opts.get<double>("max_time")),
       use_general_costs(opts.get<bool>("use_general_costs")),
       pick_split(static_cast<PickSplit>(opts.get<int>("pick"))),
       num_abstractions(0),
       num_states(0),
+      num_non_looping_transitions(0),
       initial_state(task_proxy.get_initial_state()) {
     verify_no_axioms(task_proxy);
     verify_no_conditional_effects(task_proxy);
@@ -83,6 +85,7 @@ shared_ptr<AbstractTask> AdditiveCartesianHeuristic::get_remaining_costs_task(
 
 bool AdditiveCartesianHeuristic::may_build_another_abstraction() {
     return num_states < max_states &&
+           num_non_looping_transitions < max_non_looping_transitions &&
            !timer.is_expired() &&
            utils::extra_memory_padding_is_reserved() &&
            compute_heuristic(initial_state) != DEAD_END;
@@ -98,12 +101,15 @@ void AdditiveCartesianHeuristic::build_abstractions(
         Abstraction abstraction(
             subtask,
             max(1, (max_states - num_states) / rem_subtasks),
+            max(1, (max_non_looping_transitions - num_non_looping_transitions) /
+                rem_subtasks),
             timer.get_remaining_time() / rem_subtasks,
             use_general_costs,
             pick_split);
 
         ++num_abstractions;
         num_states += abstraction.get_num_states();
+        num_non_looping_transitions += abstraction.get_num_non_looping_transitions();
         assert(num_states <= max_states);
         reduce_remaining_costs(abstraction.get_saturated_costs());
         int init_h = abstraction.get_h_value_of_initial_state();
@@ -141,6 +147,8 @@ void AdditiveCartesianHeuristic::print_statistics() const {
     cout << "Cartesian heuristic functions stored: "
          << heuristic_functions.size() << endl;
     cout << "Cartesian states: " << num_states << endl;
+    cout << "Total number of non-looping transitions: "
+         << num_non_looping_transitions << endl;
     cout << endl;
 }
 
@@ -202,10 +210,16 @@ static Heuristic *_parse(OptionParser &parser) {
         "maximum sum of abstract states over all abstractions",
         "infinity",
         Bounds("1", "infinity"));
+    parser.add_option<int>(
+        "max_transitions",
+        "maximum sum of real transitions (excluding self-loops) over "
+        " all abstractions",
+        "2000000",
+        Bounds("0", "infinity"));
     parser.add_option<double>(
         "max_time",
         "maximum time in seconds for building abstractions",
-        "900",
+        "infinity",
         Bounds("0.0", "infinity"));
     vector<string> pick_strategies;
     pick_strategies.push_back("RANDOM");
