@@ -14,6 +14,8 @@
 using namespace std;
 using utils::ExitCode;
 
+const FactPair FactPair::no_fact = FactPair(-1, -1);
+
 ostream &operator<<(ostream &os, const FactPair &fact_pair) {
     os << fact_pair.var << "=" << fact_pair.value;
     return os;
@@ -49,6 +51,23 @@ const shared_ptr<AbstractTask> get_task_from_options(const Options &opts) {
         task = g_root_task();
     }
     return task;
+}
+
+/*
+  Repeated calls to get_task_from_options() for the same Options object
+  return different tasks, if "cost_type", but not "transform" is given.
+  We therefore provide set_task_and_reset_cost_type() for explicitly
+  setting the task and "resetting" the cost_type.
+
+  TODO: A better solution would be to remove get_task_from_options()
+  and to use set_task_and_reset_cost_type() exclusively. However, since
+  we're planning to remove the cost_type option for path-independent
+  heuristics anyway, we use set_task_and_reset_cost_type() in the
+  places that need it as an intermediate solution.
+*/
+void set_task_and_reset_cost_type(Options &opts) {
+    opts.set<shared_ptr<AbstractTask>>("transform", get_task_from_options(opts));
+    opts.set<int>("cost_type", NORMAL);
 }
 
 

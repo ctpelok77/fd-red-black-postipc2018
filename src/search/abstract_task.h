@@ -34,6 +34,8 @@ struct FactPair {
     bool operator!=(const FactPair &other) const {
         return var != other.var || value != other.value;
     }
+
+    static const FactPair no_fact;
 };
 
 std::ostream &operator<<(std::ostream &os, const FactPair &fact_pair);
@@ -97,7 +99,9 @@ public:
         const AbstractTask *ancestor_task) const = 0;
 };
 
-const std::shared_ptr<AbstractTask> get_task_from_options(
+extern const std::shared_ptr<AbstractTask> get_task_from_options(
     const options::Options &opts);
+
+extern void set_task_and_reset_cost_type(options::Options &opts);
 
 #endif

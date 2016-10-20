@@ -4,6 +4,7 @@
 
 #include "../landmarks/exploration.h"
 #include "../landmarks/h_m_landmarks.h"
+#include "../landmarks/landmark_graph.h"
 
 #include "../utils/memory.h"
 
@@ -16,12 +17,11 @@ namespace cegar {
 static FactPair get_fact(const LandmarkNode &node) {
     /* We assume that the given LandmarkNodes are from an h^m landmark
        graph with m=1. */
-    assert(node.vars.size() == 1);
-    assert(node.vals.size() == 1);
-    return FactPair(node.vars[0], node.vals[0]);
+    assert(node.facts.size() == 1);
+    return node.facts[0];
 }
 
-shared_ptr<LandmarkGraph> get_landmark_graph() {
+shared_ptr<LandmarkGraph> get_landmark_graph(const shared_ptr<AbstractTask> &task) {
     Options exploration_opts = Options();
     exploration_opts.set<int>("cost_type", NORMAL);
     exploration_opts.set<bool>("cache_estimates", false);
@@ -38,7 +38,7 @@ shared_ptr<LandmarkGraph> get_landmark_graph() {
     hm_opts.set<int>("lm_cost_type", NORMAL);
     HMLandmarks lm_graph_factory(hm_opts);
 
-    return lm_graph_factory.compute_lm_graph(exploration);
+    return lm_graph_factory.compute_lm_graph(task, exploration);
 }
 
 vector<FactPair> get_fact_landmarks(const LandmarkGraph &graph) {
