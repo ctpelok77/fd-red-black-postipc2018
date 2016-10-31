@@ -35,6 +35,7 @@ class MergeAndShrinkRepresentationLeaf : public MergeAndShrinkRepresentation {
     std::vector<int> lookup_table;
 public:
     MergeAndShrinkRepresentationLeaf(int var_id, int domain_size);
+    explicit MergeAndShrinkRepresentationLeaf(const MergeAndShrinkRepresentationLeaf *other);
     virtual ~MergeAndShrinkRepresentationLeaf() = default;
 
     virtual void set_distances(const Distances &) override;
@@ -53,6 +54,7 @@ public:
     MergeAndShrinkRepresentationMerge(
         std::unique_ptr<MergeAndShrinkRepresentation> left_child,
         std::unique_ptr<MergeAndShrinkRepresentation> right_child);
+    explicit MergeAndShrinkRepresentationMerge(const MergeAndShrinkRepresentationMerge *other);
     virtual ~MergeAndShrinkRepresentationMerge() = default;
 
     virtual void set_distances(const Distances &distances) override;
