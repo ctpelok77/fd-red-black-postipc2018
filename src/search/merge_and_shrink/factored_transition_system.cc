@@ -243,4 +243,50 @@ void FactoredTransitionSystem::dump(int index) const {
     transition_systems[index]->dump_labels_and_transitions();
     mas_representations[index]->dump();
 }
+
+int FactoredTransitionSystem::copy(int index) {
+    assert(is_active(index));
+    int new_index = transition_systems.size();
+    transition_systems.push_back(
+        utils::make_unique_ptr<TransitionSystem>(*transition_systems[index]));
+
+    unique_ptr<MergeAndShrinkRepresentation> hr = nullptr;
+    if (dynamic_cast<MergeAndShrinkRepresentationLeaf *>(mas_representations[index].get())) {
+        hr = utils::make_unique_ptr<MergeAndShrinkRepresentationLeaf>(
+            dynamic_cast<MergeAndShrinkRepresentationLeaf *>
+                (mas_representations[index].get()));
+    } else {
+        hr = utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
+            dynamic_cast<MergeAndShrinkRepresentationMerge *>(
+                mas_representations[index].get()));
+    }
+    mas_representations.push_back(move(hr));
+
+    distances.push_back(utils::make_unique_ptr<Distances>(*transition_systems.back(),
+                                                          *distances[index]));
+
+    ++num_active_entries;
+    return new_index;
+}
+
+void FactoredTransitionSystem::release_copies() {
+    int last_index = transition_systems.size() - 1;
+    transition_systems[last_index] = nullptr;
+    transition_systems.pop_back();
+    assert(!transition_systems.back());
+    transition_systems.pop_back();
+    assert(!transition_systems.back());
+    transition_systems.pop_back();
+    mas_representations[last_index] = nullptr;
+    mas_representations.pop_back();
+    mas_representations.pop_back();
+    mas_representations.pop_back();
+    distances[last_index] = nullptr;
+    distances.pop_back();
+    assert(!distances.back());
+    distances.pop_back();
+    assert(!distances.back());
+    distances.pop_back();
+    --num_active_entries;
+}
 }

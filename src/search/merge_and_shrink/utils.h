@@ -44,6 +44,23 @@ extern bool shrink_transition_system(
     Verbosity verbosity);
 
 extern bool is_goal_relevant(const TransitionSystem &ts);
+
+/*
+  This method copies the entries given via ts_index1 and ts_index2, shrinks
+  them according to the usual rules (i.e. by using compute_shrink_sizes and
+  shrink_transition_system), and then merges them. The given factored
+  transition system fts is extended with those three new entries. The caller
+  is responsible to delete those copies afterwards with a call to
+  fts.release_copies().
+*/
+extern int shrink_and_merge_temporarily(
+    FactoredTransitionSystem &fts,
+    int ts_index1,
+    int ts_index2,
+    const ShrinkStrategy &shrink_strategy,
+    int max_states,
+    int max_states_before_merge,
+    int shrink_threshold_before_merge);
 }
 
 #endif
