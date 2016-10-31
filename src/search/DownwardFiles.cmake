@@ -430,8 +430,10 @@ fast_downward_plugin(
         merge_and_shrink/merge_strategy_aliases.cc
         merge_and_shrink/merge_strategy_factory.cc
         merge_and_shrink/merge_strategy_factory_precomputed.cc
+        merge_and_shrink/merge_strategy_factory_sccs.cc
         merge_and_shrink/merge_strategy_factory_stateless.cc
         merge_and_shrink/merge_strategy_precomputed.cc
+        merge_and_shrink/merge_strategy_sccs.cc
         merge_and_shrink/merge_strategy_stateless.cc
         merge_and_shrink/merge_tree.cc
         merge_and_shrink/merge_tree_factory.cc
@@ -444,6 +446,7 @@ fast_downward_plugin(
         merge_and_shrink/transition_system.cc
         merge_and_shrink/types.cc
         merge_and_shrink/utils.cc
+    DEPENDS SCCS
 )
 
 fast_downward_plugin(
@@ -519,6 +522,14 @@ fast_downward_plugin(
         potentials/single_potential_heuristics.cc
         potentials/util.cc
     DEPENDS LP_SOLVER
+)
+
+fast_downward_plugin(
+    NAME SCCS
+    HELP "Utility to compute maximal SCCs of a graph"
+    SOURCES
+        algorithms/sccs.cc
+    DEPENDENCY_ONLY
 )
 
 fast_downward_add_plugin_sources(PLANNER_SOURCES)
