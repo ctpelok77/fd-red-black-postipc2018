@@ -137,6 +137,16 @@ public:
     bool is_active(int index) const {
         return is_index_valid(index);
     }
+
+    // Copy the entry at index and append it, increasing the size by one.
+    int copy(int index);
+    /*
+      Delete the last three indices. This assumes and requires that the
+      entry at the last index represents a merge of the entries of the
+      second and third to last indices, which in turn have been copied
+      before.
+     */
+    void release_copies();
 };
 }
 
