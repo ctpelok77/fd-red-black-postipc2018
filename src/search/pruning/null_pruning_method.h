@@ -13,7 +13,7 @@ public:
     virtual void prune_operators(const State &,
                                  std::vector<int> &) override {}
     virtual void prune_operators(const GlobalState &,
-                                 std::vector<const GlobalOperator *> &) override {}
+                                 std::vector<int> &) override {}
     virtual void print_statistics() const override {}
 };
 }
