@@ -7,7 +7,6 @@
 #include "../global_state.h"
 #include "../option_parser.h"
 #include "../plugin.h"
-#include "../successor_generator.h"
 
 #include "../lp/lp_solver.h"
 
@@ -43,7 +42,8 @@ LandmarkCountHeuristic::LandmarkCountHeuristic(const options::Options &opts)
       dead_ends_reliable(
           admissible ||
           (!has_axioms(task_proxy) &&
-           (!has_conditional_effects(task_proxy) || conditional_effects_supported))) {
+           (!has_conditional_effects(task_proxy) || conditional_effects_supported))),
+      successor_generator(task_proxy) {
     cout << "Initializing landmarks count heuristic..." << endl;
     LandmarkFactory *lm_graph_factory = opts.get<LandmarkFactory *>("lm_factory");
     lgraph = lm_graph_factory->compute_lm_graph(task, exploration);
@@ -194,12 +194,13 @@ bool LandmarkCountHeuristic::generate_helpful_actions(const State &state,
      return false. If a simple landmark can be achieved, return only operators
      that achieve simple landmarks, else return operators that achieve
      disjunctive landmarks */
-    vector<OperatorProxy> all_operators;
-    g_successor_generator->generate_applicable_ops(state, all_operators);
+    vector<int> applicable_operators;
+    successor_generator.generate_applicable_ops(state, applicable_operators);
     vector<int> ha_simple;
     vector<int> ha_disj;
 
-    for (OperatorProxy op : all_operators) {
+    for (int op_id : applicable_operators) {
+        OperatorProxy op = task_proxy.get_operators()[op_id];
         EffectsProxy effects = op.get_effects();
         for (EffectProxy effect : effects) {
             if (!does_fire(effect, state))
