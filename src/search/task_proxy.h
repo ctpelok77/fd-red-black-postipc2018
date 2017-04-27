@@ -2,7 +2,9 @@
 #define TASK_PROXY_H
 
 #include "abstract_task.h"
+#include "operator_id.h"
 
+#include "utils/collections.h"
 #include "utils/hash.h"
 #include "utils/system.h"
 
@@ -471,8 +473,9 @@ public:
         return index;
     }
 
-    const GlobalOperator *get_global_operator() const {
-        return task->get_global_operator(index, is_an_axiom);
+    OperatorID get_global_operator_id() const {
+        assert(!is_an_axiom);
+        return task->get_global_operator_id(OperatorID(index));
     }
 };
 
@@ -496,6 +499,10 @@ public:
     OperatorProxy operator[](std::size_t index) const {
         assert(index < size());
         return OperatorProxy(*task, index, false);
+    }
+
+    OperatorProxy operator[](OperatorID id) const {
+        return (*this)[id.get_index()];
     }
 };
 
