@@ -1,8 +1,10 @@
 #include "factored_transition_system.h"
 
 #include "distances.h"
+#include "label_reduction.h"
 #include "labels.h"
 #include "merge_and_shrink_representation.h"
+#include "shrink_strategy.h"
 #include "transition_system.h"
 
 #include "../utils/memory.h"
@@ -71,6 +73,21 @@ FactoredTransitionSystem::FactoredTransitionSystem(FactoredTransitionSystem &&ot
 FactoredTransitionSystem::~FactoredTransitionSystem() {
 }
 
+void FactoredTransitionSystem::compute_distances_and_prune(
+    int index, Verbosity verbosity) {
+    /*
+      This method does all that compute_distances does and
+      additionally prunes all states that are unreachable (abstract g
+      is infinite) or irrelevant (abstract h is infinite).
+    */
+    assert(is_index_valid(index));
+    discard_states(
+        index,
+        distances[index]->compute_distances(verbosity),
+        verbosity);
+    assert(is_component_valid(index));
+}
+
 void FactoredTransitionSystem::discard_states(
     int index,
     const vector<bool> &to_be_pruned_states,
@@ -88,52 +105,6 @@ void FactoredTransitionSystem::discard_states(
         }
     }
     apply_abstraction(index, state_equivalence_relation, verbosity);
-}
-
-bool FactoredTransitionSystem::is_index_valid(int index) const {
-    if (index >= static_cast<int>(transition_systems.size())) {
-        assert(index >= static_cast<int>(mas_representations.size()));
-        assert(index >= static_cast<int>(distances.size()));
-        return false;
-    }
-    return transition_systems[index] && mas_representations[index]
-           && distances[index];
-}
-
-bool FactoredTransitionSystem::is_component_valid(int index) const {
-    assert(is_index_valid(index));
-    return distances[index]->are_distances_computed()
-           && transition_systems[index]->are_transitions_sorted_unique();
-}
-
-void FactoredTransitionSystem::compute_distances_and_prune(
-    int index, Verbosity verbosity) {
-    /*
-      This method does all that compute_distances does and
-      additionally prunes all states that are unreachable (abstract g
-      is infinite) or irrelevant (abstract h is infinite).
-    */
-    assert(is_index_valid(index));
-    discard_states(
-        index,
-        distances[index]->compute_distances(verbosity),
-        verbosity);
-    assert(is_component_valid(index));
-}
-
-void FactoredTransitionSystem::apply_label_reduction(
-    const vector<pair<int, vector<int>>> &label_mapping,
-    int combinable_index) {
-    for (const auto &new_label_old_labels : label_mapping) {
-        assert(new_label_old_labels.first == labels->get_size());
-        labels->reduce_labels(new_label_old_labels.second);
-    }
-    for (size_t i = 0; i < transition_systems.size(); ++i) {
-        if (transition_systems[i]) {
-            transition_systems[i]->apply_label_reduction(
-                label_mapping, static_cast<int>(i) != combinable_index);
-        }
-    }
 }
 
 bool FactoredTransitionSystem::apply_abstraction(
@@ -165,6 +136,59 @@ bool FactoredTransitionSystem::apply_abstraction(
     }
     assert(is_component_valid(index));
     return shrunk;
+}
+
+bool FactoredTransitionSystem::is_index_valid(int index) const {
+    if (index >= static_cast<int>(transition_systems.size())) {
+        assert(index >= static_cast<int>(mas_representations.size()));
+        assert(index >= static_cast<int>(distances.size()));
+        return false;
+    }
+    return transition_systems[index] && mas_representations[index]
+           && distances[index];
+}
+
+bool FactoredTransitionSystem::is_component_valid(int index) const {
+    assert(is_index_valid(index));
+    return distances[index]->are_distances_computed()
+           && transition_systems[index]->are_transitions_sorted_unique();
+}
+
+void FactoredTransitionSystem::apply_label_mapping(
+    const vector<pair<int, vector<int>>> &label_mapping,
+    int combinable_index) {
+    for (const auto &new_label_old_labels : label_mapping) {
+        assert(new_label_old_labels.first == labels->get_size());
+        labels->reduce_labels(new_label_old_labels.second);
+    }
+    for (size_t i = 0; i < transition_systems.size(); ++i) {
+        if (transition_systems[i]) {
+            transition_systems[i]->apply_label_reduction(
+                label_mapping, static_cast<int>(i) != combinable_index);
+        }
+    }
+}
+
+bool FactoredTransitionSystem::apply_label_reduction(
+    const LabelReduction &label_reduction,
+    const pair<int, int> &merge_indices,
+    Verbosity verbosity) {
+    return label_reduction.reduce(merge_indices, *this, verbosity);
+}
+
+bool FactoredTransitionSystem::shrink(
+    int index,
+    int target_size,
+    const ShrinkStrategy &shrink_strategy,
+    Verbosity verbosity) {
+    const TransitionSystem &ts = *transition_systems[index];
+    assert(ts.is_solvable());
+    const Distances &dist = *distances[index];
+    StateEquivalenceRelation equivalence_relation =
+        shrink_strategy.compute_equivalence_relation(ts, dist, target_size);
+    // TODO: We currently violate this; see issue250
+    //assert(equivalence_relation.size() <= target_size);
+    return apply_abstraction(index, equivalence_relation, verbosity);
 }
 
 int FactoredTransitionSystem::merge(
