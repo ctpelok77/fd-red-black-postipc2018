@@ -48,7 +48,8 @@ FactoredTransitionSystem::FactoredTransitionSystem(
       mas_representations(move(mas_representations)),
       distances(move(distances)),
       unsolvable_index(-1),
-      num_active_entries(this->transition_systems.size()) {
+      num_active_entries(this->transition_systems.size()),
+      ignore_representation(false) {
     for (size_t i = 0; i < this->transition_systems.size(); ++i) {
         compute_distances_and_prune(i, verbosity);
         if (finalize_if_unsolvable && !this->transition_systems[i]->is_solvable()) {
@@ -64,7 +65,8 @@ FactoredTransitionSystem::FactoredTransitionSystem(FactoredTransitionSystem &&ot
       mas_representations(move(other.mas_representations)),
       distances(move(other.distances)),
       unsolvable_index(move(other.unsolvable_index)),
-      num_active_entries(move(other.num_active_entries)) {
+      num_active_entries(move(other.num_active_entries)),
+      ignore_representation(move(other.ignore_representation)) {
     /*
       This is just a default move constructor. Unfortunately Visual
       Studio does not support "= default" for move construction or
@@ -133,8 +135,10 @@ bool FactoredTransitionSystem::apply_abstraction(
     if (shrunk) {
         distances[index]->apply_abstraction(
             state_equivalence_relation, verbosity);
-        mas_representations[index]->apply_abstraction_to_lookup_table(
-            abstraction_mapping);
+        if (!ignore_representation) {
+            mas_representations[index]->apply_abstraction_to_lookup_table(
+                abstraction_mapping);
+        }
     }
     assert(is_component_valid(index));
     return shrunk;
@@ -142,9 +146,9 @@ bool FactoredTransitionSystem::apply_abstraction(
 
 void FactoredTransitionSystem::assert_index_valid(int index) const {
     assert(utils::in_bounds(index, transition_systems));
-    assert(utils::in_bounds(index, mas_representations));
+    assert(ignore_representation || utils::in_bounds(index, mas_representations));
     assert(utils::in_bounds(index, distances));
-    if (!(transition_systems[index] && mas_representations[index] && distances[index]) &&
+    if (!(transition_systems[index] && (ignore_representation || mas_representations[index]) && distances[index]) &&
         !(!transition_systems[index] && !mas_representations[index] && !distances[index])) {
         cerr << "Factor at index is in an inconsistent state!" << endl;
         utils::exit_with(utils::ExitCode::CRITICAL_ERROR);
@@ -211,12 +215,14 @@ int FactoredTransitionSystem::merge(
     distances[index2] = nullptr;
     transition_systems[index1] = nullptr;
     transition_systems[index2] = nullptr;
-    mas_representations.push_back(
-        utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
-            move(mas_representations[index1]),
-            move(mas_representations[index2])));
-    mas_representations[index1] = nullptr;
-    mas_representations[index2] = nullptr;
+    if (!ignore_representation) {
+        mas_representations.push_back(
+            utils::make_unique_ptr<MergeAndShrinkRepresentationMerge>(
+                move(mas_representations[index1]),
+                move(mas_representations[index2])));
+        mas_representations[index1] = nullptr;
+        mas_representations[index2] = nullptr;
+    }
     const TransitionSystem &new_ts = *transition_systems.back();
     distances.push_back(utils::make_unique_ptr<Distances>(new_ts));
     int new_index = transition_systems.size() - 1;
@@ -274,5 +280,36 @@ void FactoredTransitionSystem::dump(int index) const {
 bool FactoredTransitionSystem::is_active(int index) const {
     assert_index_valid(index);
     return transition_systems[index] != nullptr;
+}
+
+int FactoredTransitionSystem::copy_factor_without_representation(int index) {
+    assert_index_valid(index);
+    int new_index = transition_systems.size();
+    transition_systems.push_back(
+        utils::make_unique_ptr<TransitionSystem>(*transition_systems[index]));
+    distances.push_back(utils::make_unique_ptr<Distances>(*transition_systems.back(),
+                                                          *distances[index]));
+    ++num_active_entries;
+    ignore_representation = true;
+    return new_index;
+}
+
+void FactoredTransitionSystem::delete_last_three_entries() {
+    assert(ignore_representation);
+    int last_index = transition_systems.size() - 1;
+    transition_systems[last_index] = nullptr;
+    transition_systems.pop_back();
+    assert(!transition_systems.back());
+    transition_systems.pop_back();
+    assert(!transition_systems.back());
+    transition_systems.pop_back();
+    distances[last_index] = nullptr;
+    distances.pop_back();
+    assert(!distances.back());
+    distances.pop_back();
+    assert(!distances.back());
+    distances.pop_back();
+    --num_active_entries;
+    ignore_representation = false;
 }
 }
