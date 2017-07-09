@@ -284,7 +284,7 @@ std::size_t get_hash(const T &value) {
 
 
 // This struct should only be used by HashMap and HashSet below.
-template <typename T>
+template<typename T>
 struct Hash {
     std::size_t operator()(const T &val) const {
         return get_hash(val);
@@ -299,10 +299,10 @@ struct Hash {
 
   To hash types that are not supported out of the box, implement utils::feed.
 */
-template <typename T1, typename T2>
+template<typename T1, typename T2>
 using HashMap = std::unordered_map<T1, T2, Hash<T1>>;
 
-template <typename T>
+template<typename T>
 using HashSet = std::unordered_set<T, Hash<T>>;
 
 
