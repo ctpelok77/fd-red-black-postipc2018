@@ -163,48 +163,6 @@ void MergeAndShrinkHeuristic::warn_on_unusual_options() const {
     }
 }
 
-bool MergeAndShrinkHeuristic::shrink_before_merge(
-    FactoredTransitionSystem &fts, int index1, int index2) {
-    /*
-      Compute the size limit for both transition systems as imposed by
-      max_states and max_states_before_merge.
-    */
-    pair<int, int> new_sizes = compute_shrink_sizes(
-        fts.get_ts(index1).get_size(),
-        fts.get_ts(index2).get_size(),
-        max_states_before_merge,
-        max_states);
-
-    /*
-      For both transition systems, possibly compute and apply an
-      abstraction.
-      TODO: we could better use the given limit by increasing the size limit
-      for the second shrinking if the first shrinking was larger than
-      required.
-    */
-    bool shrunk1 = shrink_factor(
-        fts,
-        index1,
-        new_sizes.first,
-        shrink_threshold_before_merge,
-        *shrink_strategy,
-        verbosity);
-    if (verbosity >= Verbosity::VERBOSE && shrunk1) {
-        fts.statistics(index1);
-    }
-    bool shrunk2 = shrink_factor(
-        fts,
-        index2,
-        new_sizes.second,
-        shrink_threshold_before_merge,
-        *shrink_strategy,
-        verbosity);
-    if (verbosity >= Verbosity::VERBOSE && shrunk2) {
-        fts.statistics(index2);
-    }
-    return shrunk1 || shrunk2;
-}
-
 void MergeAndShrinkHeuristic::build(const utils::Timer &timer) {
     const bool compute_init_distances =
         shrink_strategy->requires_init_distances() ||
@@ -228,7 +186,7 @@ void MergeAndShrinkHeuristic::build(const utils::Timer &timer) {
     */
     for (int index = 0; index < fts.get_size(); ++index) {
         if (prune_unreachable_states || prune_irrelevant_states) {
-            prune_factor(
+            prune_step(
                 fts,
                 index,
                 prune_unreachable_states,
@@ -273,8 +231,15 @@ void MergeAndShrinkHeuristic::build(const utils::Timer &timer) {
             }
 
             // Shrinking
-            bool shrunk = shrink_before_merge(
-                fts, merge_index1, merge_index2);
+            bool shrunk = shrink_before_merge_step(
+                fts,
+                merge_index1,
+                merge_index2,
+                max_states,
+                max_states_before_merge,
+                shrink_threshold_before_merge,
+                *shrink_strategy,
+                verbosity);
             if (verbosity >= Verbosity::NORMAL && shrunk) {
                 print_time(timer, "after shrinking");
             }
@@ -298,7 +263,7 @@ void MergeAndShrinkHeuristic::build(const utils::Timer &timer) {
 
             // Pruning
             if (prune_unreachable_states || prune_irrelevant_states) {
-                bool pruned = prune_factor(
+                bool pruned = prune_step(
                     fts,
                     merged_index,
                     prune_unreachable_states,
@@ -484,9 +449,7 @@ static Heuristic *_parse(OptionParser &parser) {
             "Proceedings of the 26th International Conference on Automated "
             "Planning and Scheduling (ICAPS 2016)",
             "294-298",
-            "AAAI Press 2016") + "\n" +
-        "Note that dyn-MIASM has not been integrated into the official code "
-        "base of Fast Downward and is available on request.");
+            "AAAI Press 2016"));
     parser.document_language_support("action costs", "supported");
     parser.document_language_support("conditional effects", "supported (but see note)");
     parser.document_language_support("axioms", "not supported");
@@ -511,8 +474,7 @@ static Heuristic *_parse(OptionParser &parser) {
         "{{{\nmerge_and_shrink(shrink_strategy=shrink_bisimulation(greedy=false),"
         "merge_strategy=merge_sccs(order_of_sccs=topological,merge_selector="
         "score_based_filtering(scoring_functions=[goal_relevance,dfp,"
-        "total_order])),"
-        "label_reduction=exact(before_shrinking=true,"
+        "total_order])),label_reduction=exact(before_shrinking=true,"
         "before_merging=false),max_states=50000,threshold_before_merge=1)\n}}}\n"
         "Note that for versions of Fast Downward prior to 2016-08-19, the "
         "syntax differs. See the recommendation in the file "
