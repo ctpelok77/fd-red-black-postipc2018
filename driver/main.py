@@ -26,22 +26,27 @@ def main():
         cleanup.cleanup_temporary_files(args)
         sys.exit()
 
-    # If validation succeeds, exit with the search component's exitcode.
     exitcode = None
     for component in args.components:
         try:
             if component == "translate":
-                run_components.run_translate(args)
+                exitcode = run_components.run_translate(args)
             elif component == "search":
                 exitcode = run_components.run_search(args)
             elif component == "validate":
-                run_components.run_validate(args)
+                exitcode = run_components.run_validate(args)
             else:
                 assert False
         except subprocess.CalledProcessError as err:
             print(err)
             exitcode = err.returncode
+        print("{} exit code: {}".format(component, exitcode))
+        if exitcode != 0:
+            print("Stopping after non-zero exit code of {}".format(component))
             break
+    # Exit with the exit code of the last component that ran succesfully.
+    # This means for example that if no plan was found, validate is not run,
+    # so the return code is that of the search.
     sys.exit(exitcode)
 
 
