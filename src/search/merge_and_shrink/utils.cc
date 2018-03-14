@@ -6,6 +6,7 @@
 #include "transition_system.h"
 
 #include "../utils/math.h"
+#include "../utils/memory.h"
 
 #include <algorithm>
 #include <cassert>
@@ -14,6 +15,18 @@
 using namespace std;
 
 namespace merge_and_shrink {
+/*
+  Compute target sizes for shrinking two transition systems with sizes size1
+  and size2 before they are merged. Use the following rules:
+  1) Right before merging, the transition systems may have at most
+     max_states_before_merge states.
+  2) Right after merging, the product has at most max_states_after_merge states.
+  3) Transition systems are shrunk as little as necessary to satisfy the above
+     constraints. (If possible, neither is shrunk at all.)
+  There is often a Pareto frontier of solutions following these rules. In this
+  case, balanced solutions (where the target sizes are close to each other)
+  are preferred over less balanced ones.
+*/
 pair<int, int> compute_shrink_sizes(
     int size1,
     int size2,
@@ -53,6 +66,13 @@ pair<int, int> compute_shrink_sizes(
     return make_pair(new_size1, new_size2);
 }
 
+/*
+  This method checks if the transition system of the factor at index violates
+  the size limit given via new_size (e.g. as computed by compute_shrink_sizes)
+  or the threshold shrink_threshold_before_merge that triggers shrinking even
+  if the size limit is not violated. If so, trigger the shrinking process.
+  Return true iff the factor was actually shrunk.
+*/
 bool shrink_factor(
     FactoredTransitionSystem &fts,
     int index,
@@ -82,7 +102,56 @@ bool shrink_factor(
     return false;
 }
 
-bool prune_factor(
+bool shrink_before_merge_step(
+    FactoredTransitionSystem &fts,
+    int index1,
+    int index2,
+    int max_states,
+    int max_states_before_merge,
+    int shrink_threshold_before_merge,
+    const ShrinkStrategy &shrink_strategy,
+    Verbosity verbosity) {
+    /*
+      Compute the size limit for both transition systems as imposed by
+      max_states and max_states_before_merge.
+    */
+    pair<int, int> new_sizes = compute_shrink_sizes(
+        fts.get_ts(index1).get_size(),
+        fts.get_ts(index2).get_size(),
+        max_states_before_merge,
+        max_states);
+
+    /*
+      For both transition systems, possibly compute and apply an
+      abstraction.
+      TODO: we could better use the given limit by increasing the size limit
+      for the second shrinking if the first shrinking was larger than
+      required.
+    */
+    bool shrunk1 = shrink_factor(
+        fts,
+        index1,
+        new_sizes.first,
+        shrink_threshold_before_merge,
+        shrink_strategy,
+        verbosity);
+    if (verbosity >= Verbosity::VERBOSE && shrunk1) {
+        fts.statistics(index1);
+    }
+    bool shrunk2 = shrink_factor(
+        fts,
+        index2,
+        new_sizes.second,
+        shrink_threshold_before_merge,
+        shrink_strategy,
+        verbosity);
+    if (verbosity >= Verbosity::VERBOSE && shrunk2) {
+        fts.statistics(index2);
+    }
+    return shrunk1 || shrunk2;
+}
+
+bool prune_step(
     FactoredTransitionSystem &fts,
     int index,
     bool prune_unreachable_states,
@@ -156,5 +225,101 @@ bool is_goal_relevant(const TransitionSystem &ts) {
         }
     }
     return false;
+}
+
+/*
+  Compute a state equivalence relation for the given transition system with
+  the given shrink strategy, respecting the given size limit new_size. If the
+  result of applying it actually reduced the size of the transition system,
+  copy the transition system, apply the state equivalence relation to it and
+  return the result. Return nullptr otherwise.
+*/
+unique_ptr<TransitionSystem> copy_and_shrink_ts(
+    const TransitionSystem &ts,
+    const Distances &distances,
+    const ShrinkStrategy &shrink_strategy,
+    int new_size,
+    Verbosity verbosity) {
+    StateEquivalenceRelation equivalence_relation =
+        shrink_strategy.compute_equivalence_relation(ts, distances, new_size);
+    // TODO: We currently violate this; see issue250
+    //assert(equivalence_relation.size() <= target_size);
+    int new_num_states = equivalence_relation.size();
+
+    if (new_num_states < ts.get_size()) {
+        /*
+          If we actually shrink the transition system, we first need to copy it,
+          then shrink it and return it.
+        */
+        vector<int> abstraction_mapping = compute_abstraction_mapping(
+            ts.get_size(), equivalence_relation);
+        unique_ptr<TransitionSystem> ts_copy =
+            utils::make_unique_ptr<TransitionSystem>(ts);
+        ts_copy->apply_abstraction(
+            equivalence_relation, abstraction_mapping, verbosity);
+        return ts_copy;
+    } else {
+        return nullptr;
+    }
+}
+
+unique_ptr<TransitionSystem> shrink_before_merge_externally(
+    const FactoredTransitionSystem &fts,
+    int index1,
+    int index2,
+    const ShrinkStrategy &shrink_strategy,
+    int max_states,
+    int max_states_before_merge,
+    int shrink_threshold_before_merge) {
+    const TransitionSystem &original_ts1 = fts.get_ts(index1);
+    const TransitionSystem &original_ts2 = fts.get_ts(index2);
+
+    /*
+      Determine size limits and if shrinking is necessary or possible as done
+      in the merge-and-shrink loop.
+    */
+    pair<int, int> new_sizes = compute_shrink_sizes(
+        original_ts1.get_size(),
+        original_ts2.get_size(),
+        max_states_before_merge,
+        max_states);
+    bool must_shrink_ts1 = original_ts1.get_size() > min(new_sizes.first, shrink_threshold_before_merge);
+    bool must_shrink_ts2 = original_ts2.get_size() > min(new_sizes.second, shrink_threshold_before_merge);
+
+    /*
+      If we need to shrink, copy_and_shrink_ts will take care of computing
+      a copy, shrinking it, and returning it. (In cases where shrinking is
+      only triggered due to the threshold being passed but no perfect
+      shrinking is possible, the method returns a null pointer.)
+    */
+    Verbosity verbosity = Verbosity::SILENT;
+    unique_ptr<TransitionSystem> ts1 = nullptr;
+    if (must_shrink_ts1) {
+        ts1 = copy_and_shrink_ts(
+            original_ts1,
+            fts.get_distances(index1),
+            shrink_strategy,
+            new_sizes.first,
+            verbosity);
+    }
+    unique_ptr<TransitionSystem> ts2 = nullptr;
+    if (must_shrink_ts2) {
+        ts2 = copy_and_shrink_ts(
+            original_ts2,
+            fts.get_distances(index2),
+            shrink_strategy,
+            new_sizes.second,
+            verbosity);
+    }
+
+    /*
+      Return the product, using either the original transition systems or
+      the copied and shrunk ones.
+    */
+    return TransitionSystem::merge(
+        fts.get_labels(),
+        (ts1 ? *ts1 : original_ts1),
+        (ts2 ? *ts2 : original_ts2),
+        verbosity);
 }
 }
