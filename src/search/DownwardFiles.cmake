@@ -65,6 +65,8 @@ fast_downward_plugin(
         option_parser
         option_parser_util
         per_state_information
+        per_state_array
+        per_state_bitset
         plugin
         pruning_method
         search_engine
