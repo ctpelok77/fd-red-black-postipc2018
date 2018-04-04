@@ -8,7 +8,8 @@
 #include "plugin.h"
 
 #include "algorithms/ordered_set.h"
-
+#include "task_utils/task_properties.h"
+#include "tasks/root_task.h"
 #include "utils/countdown_timer.h"
 #include "utils/rng_options.h"
 #include "utils/system.h"
@@ -26,7 +27,7 @@ class PruningMethod;
 SearchEngine::SearchEngine(const Options &opts)
     : status(IN_PROGRESS),
       solution_found(false),
-      task(g_root_task()),
+      task(tasks::g_root_task),
       task_proxy(*task),
       state_registry(
           *task, *g_state_packer, *g_axiom_evaluator, g_initial_state_data),
@@ -79,12 +80,12 @@ void SearchEngine::search() {
         }
     }
     // TODO: Revise when and which search times are logged.
-    cout << "Actual search time: " << timer
+    cout << "Actual search time: " << timer.get_elapsed_time()
          << " [t=" << utils::g_timer << "]" << endl;
 }
 
 bool SearchEngine::check_goal_and_set_plan(const GlobalState &state) {
-    if (test_goal(state)) {
+    if (task_properties::is_goal_state(task_proxy, state)) {
         cout << "Solution found!" << endl;
         Plan plan;
         search_space.trace_path(state, plan);
