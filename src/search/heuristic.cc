@@ -97,6 +97,22 @@ EvaluationResult Heuristic::compute_result(EvaluationContext &eval_context) {
     return result;
 }
 
+std::pair<bool,bool> Heuristic::reevaluate_and_check_if_changed(EvaluationContext &eval_context) {
+    const GlobalState &state = eval_context.get_state();
+    std::pair<bool,bool> ret(false,false);
+
+    if(!cache_h_values || !heuristic_cache[state].dirty) {
+        return ret;
+    }
+
+    int old_h = heuristic_cache[state].h;
+    heuristic_cache[state] = HEntry(compute_heuristic(state),false);
+    ret.first = true;
+    if(old_h != heuristic_cache[state].h) {
+        ret.second = true;
+    }
+    return ret;
+}
 
 static PluginTypePlugin<Heuristic> _type_plugin(
     "Heuristic",
