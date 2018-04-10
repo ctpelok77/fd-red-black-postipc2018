@@ -95,7 +95,7 @@ Abstraction::Abstraction(
          << max_non_looping_transitions << endl;
     build(rng);
     g_log << "Done building abstraction." << endl;
-    cout << "Time for building abstraction: " << timer << endl;
+    cout << "Time for building abstraction: " << timer.get_elapsed_time() << endl;
 
     /* Even if we found a concrete solution, we might have refined in the
        last iteration, so we should update the distances. */
@@ -199,8 +199,10 @@ void Abstraction::refine(AbstractState *state, int var, const vector<int> &wante
     states.insert(v1);
     states.insert(v2);
 
-    /* Since the search is always started from the abstract initial state, v2
-       is never the new initial state and v1 is never a goal state. */
+    /*
+      Due to the way we split the state into v1 and v2, v2 is never the new
+      initial state and v1 is never a goal state.
+    */
     if (state == init) {
         assert(v1->includes(task_proxy.get_initial_state()));
         assert(!v2->includes(task_proxy.get_initial_state()));
