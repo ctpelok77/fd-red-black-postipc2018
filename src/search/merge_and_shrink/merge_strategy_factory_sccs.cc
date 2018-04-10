@@ -118,6 +118,22 @@ unique_ptr<MergeStrategy> MergeStrategyFactorySCCs::compute_merge_strategy(
         move(indices_of_merged_sccs));
 }
 
+bool MergeStrategyFactorySCCs::requires_init_distances() const {
+    if (merge_tree_factory) {
+        return merge_tree_factory->requires_init_distances();
+    } else {
+        return merge_selector->requires_init_distances();
+    }
+}
+
+bool MergeStrategyFactorySCCs::requires_goal_distances() const {
+    if (merge_tree_factory) {
+        return merge_tree_factory->requires_goal_distances();
+    } else {
+        return merge_selector->requires_goal_distances();
+    }
+}
+
 void MergeStrategyFactorySCCs::dump_strategy_specific_options() const {
     cout << "Merge order of sccs: ";
     switch (order_of_sccs) {
@@ -136,7 +152,7 @@ void MergeStrategyFactorySCCs::dump_strategy_specific_options() const {
     }
     cout << endl;
 
-    cout << "Merge strategy for merging within sccs: ";
+    cout << "Merge strategy for merging within sccs: " << endl;
     if (merge_tree_factory) {
         merge_tree_factory->dump_options();
     }
