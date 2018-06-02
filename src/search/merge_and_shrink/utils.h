@@ -57,6 +57,20 @@ extern std::vector<int> compute_abstraction_mapping(
     const StateEquivalenceRelation &equivalence_relation);
 
 extern bool is_goal_relevant(const TransitionSystem &ts);
+
+/*
+  Copy the two transition systems at the given indices, possibly shrink them
+  according to the same rules as merge-and-shrink does, and return their
+  product.
+*/
+extern std::unique_ptr<TransitionSystem> shrink_before_merge_externally(
+    const FactoredTransitionSystem &fts,
+    int index1,
+    int index2,
+    const ShrinkStrategy &shrink_strategy,
+    int max_states,
+    int max_states_before_merge,
+    int shrink_threshold_before_merge);
 }
 
 #endif
