@@ -5,7 +5,9 @@
 #include "../plugin.h"
 #include "../state_registry.h"
 
+#include "../task_utils/task_properties.h"
 #include "../utils/collections.h"
+#include "../utils/memory.h"
 #include "../utils/timer.h"
 
 #include <algorithm>
@@ -60,15 +62,15 @@ class RootTask : public AbstractTask {
     vector<vector<set<FactPair>>> mutexes;
     vector<ExplicitOperator> operators;
     vector<ExplicitOperator> axioms;
-    mutable vector<int> initial_state_values;
+    vector<int> initial_state_values;
     vector<FactPair> goals;
-    mutable bool evaluated_axioms_on_initial_state;
+
+    mutable unique_ptr<int_packer::IntPacker> state_packer;
+    mutable unique_ptr<AxiomEvaluator> axiom_evaluator;
 
     const ExplicitVariable &get_variable(int var) const;
     const ExplicitEffect &get_effect(int op_id, int effect_id, bool is_axiom) const;
     const ExplicitOperator &get_operator_or_axiom(int index, bool is_axiom) const;
-
-    void evaluate_axioms_on_initial_state() const;
 
 public:
     explicit RootTask(istream &in);
@@ -106,6 +108,10 @@ public:
     virtual FactPair get_goal_fact(int index) const override;
 
     virtual vector<int> get_initial_state_values() const override;
+
+    virtual const int_packer::IntPacker &get_state_packer() const override;
+    virtual const AxiomEvaluator &get_axiom_evaluator() const override;
+
     virtual void convert_state_values(
         vector<int> &values,
         const AbstractTask *ancestor_task) const override;
@@ -354,8 +360,12 @@ RootTask::RootTask(std::istream &in) {
     /* TODO: We should be stricter here and verify that we
        have reached the end of "in". */
 
-    // TODO: this global variable should disappear eventually.
-    g_initial_state_data = initial_state_values;
+    /*
+      HACK: get_axiom_evaluator creates a TaskProxy which assumes that this
+      Task is completely constructed.
+    */
+    const AxiomEvaluator &axiom_evaluator = get_axiom_evaluator();
+    axiom_evaluator.evaluate(initial_state_values);
 }
 
 const ExplicitVariable &RootTask::get_variable(int var) const {
@@ -379,17 +389,6 @@ const ExplicitOperator &RootTask::get_operator_or_axiom(
         assert(utils::in_bounds(index, operators));
         return operators[index];
     }
-}
-
-void RootTask::evaluate_axioms_on_initial_state() const {
-    if (!axioms.empty()) {
-        // HACK this should not have to go through a state registry.
-        // HACK on top of the HACK above: this should not use globals.
-        StateRegistry state_registry(
-            *this, *g_state_packer, *g_axiom_evaluator, initial_state_values);
-        initial_state_values = state_registry.get_initial_state().get_values();
-    }
-    evaluated_axioms_on_initial_state = true;
 }
 
 int RootTask::get_num_variables() const {
@@ -489,11 +488,23 @@ FactPair RootTask::get_goal_fact(int index) const {
 }
 
 vector<int> RootTask::get_initial_state_values() const {
-    if (!evaluated_axioms_on_initial_state) {
-        evaluate_axioms_on_initial_state();
-    }
     return initial_state_values;
 }
+
+const int_packer::IntPacker &RootTask::get_state_packer() const {
+    if (!state_packer) {
+        state_packer = task_properties::create_state_packer(TaskProxy(*this));
+    }
+    return *state_packer;
+}
+
+const AxiomEvaluator &RootTask::get_axiom_evaluator() const {
+    if (!axiom_evaluator) {
+        axiom_evaluator = utils::make_unique_ptr<AxiomEvaluator>(TaskProxy(*this));
+    }
+    return *axiom_evaluator;
+}
+
 
 void RootTask::convert_state_values(
     vector<int> &, const AbstractTask *ancestor_task) const {

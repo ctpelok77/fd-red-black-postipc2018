@@ -10,6 +10,12 @@
 #include <utility>
 #include <vector>
 
+class AxiomEvaluator;
+
+namespace int_packer {
+class IntPacker;
+}
+
 namespace options {
 class Options;
 }
@@ -88,6 +94,10 @@ public:
     virtual FactPair get_goal_fact(int index) const = 0;
 
     virtual std::vector<int> get_initial_state_values() const = 0;
+
+    virtual const int_packer::IntPacker &get_state_packer() const = 0;
+    virtual const AxiomEvaluator &get_axiom_evaluator() const = 0;
+
     /*
       Convert state values from an ancestor task A (ancestor) into
       state values from this task, C (child). Task A has to be an

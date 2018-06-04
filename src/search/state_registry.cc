@@ -3,16 +3,15 @@
 #include "per_state_information.h"
 #include "task_proxy.h"
 
+#include "task_utils/task_properties.h"
+
 using namespace std;
 
-StateRegistry::StateRegistry(
-    const AbstractTask &task, const int_packer::IntPacker &state_packer,
-    AxiomEvaluator &axiom_evaluator, const vector<int> &initial_state_data)
+StateRegistry::StateRegistry(const AbstractTask &task)
     : task(task),
-      state_packer(state_packer),
-      axiom_evaluator(axiom_evaluator),
-      initial_state_data(initial_state_data),
-      num_variables(initial_state_data.size()),
+      state_packer(TaskProxy(task).get_state_packer()),
+      axiom_evaluator(TaskProxy(task).get_axiom_evaluator()),
+      num_variables(TaskProxy(task).get_variables().size()),
       state_data_pool(get_bins_per_state()),
       registered_states(
           StateIDSemanticHash(state_data_pool, get_bins_per_state()),
@@ -55,10 +54,12 @@ const GlobalState &StateRegistry::get_initial_state() {
         PackedStateBin *buffer = new PackedStateBin[get_bins_per_state()];
         // Avoid garbage values in half-full bins.
         fill_n(buffer, get_bins_per_state(), 0);
-        for (size_t i = 0; i < initial_state_data.size(); ++i) {
-            state_packer.set(buffer, i, initial_state_data[i]);
+
+        TaskProxy task_proxy(task);
+        State initial_state = task_proxy.get_initial_state();
+        for (size_t i = 0; i < initial_state.size(); ++i) {
+            state_packer.set(buffer, i, initial_state[i].get_value());
         }
-        axiom_evaluator.evaluate(buffer, state_packer);
         state_data_pool.push_back(buffer);
         // buffer is copied by push_back
         delete[] buffer;
