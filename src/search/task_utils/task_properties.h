@@ -4,6 +4,8 @@
 #include "../global_state.h"
 #include "../task_proxy.h"
 
+#include "../algorithms/int_packer.h"
+
 namespace task_properties {
 inline bool is_applicable(OperatorProxy op, const State &state) {
     for (FactProxy precondition : op.get_preconditions()) {
@@ -76,6 +78,8 @@ std::vector<FactPair> get_fact_pairs(const FactProxyCollection &facts) {
     }
     return fact_pairs;
 }
+
+std::unique_ptr<int_packer::IntPacker> create_state_packer(const TaskProxy &task_proxy);
 }
 
 #endif

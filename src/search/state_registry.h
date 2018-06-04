@@ -154,8 +154,7 @@ class StateRegistry {
     /* TODO: When we switch StateRegistry to the task interface, the next three
              members should come from the task. */
     const int_packer::IntPacker &state_packer;
-    AxiomEvaluator &axiom_evaluator;
-    const std::vector<int> &initial_state_data;
+    const AxiomEvaluator &axiom_evaluator;
     const int num_variables;
 
     segmented_vector::SegmentedArrayVector<PackedStateBin> state_data_pool;
@@ -167,9 +166,7 @@ class StateRegistry {
     StateID insert_id_or_pop_state();
     int get_bins_per_state() const;
 public:
-    StateRegistry(
-        const AbstractTask &task, const int_packer::IntPacker &state_packer,
-        AxiomEvaluator &axiom_evaluator, const std::vector<int> &initial_state_data);
+    StateRegistry(const AbstractTask &task);
     ~StateRegistry();
 
     /* TODO: Ideally, this should return a TaskProxy. (See comment above the
