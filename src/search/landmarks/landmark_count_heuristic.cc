@@ -53,14 +53,14 @@ LandmarkCountHeuristic::LandmarkCountHeuristic(const options::Options &opts)
     if (admissible) {
         if (reasonable_orders) {
             cerr << "Reasonable orderings should not be used for admissible heuristics" << endl;
-            utils::exit_with(ExitCode::INPUT_ERROR);
+            utils::exit_with(ExitCode::SEARCH_INPUT_ERROR);
         } else if (task_properties::has_axioms(task_proxy)) {
             cerr << "cost partitioning does not support axioms" << endl;
-            utils::exit_with(ExitCode::UNSUPPORTED);
+            utils::exit_with(ExitCode::SEARCH_UNSUPPORTED);
         } else if (task_properties::has_conditional_effects(task_proxy) &&
                    !conditional_effects_supported) {
             cerr << "conditional effects not supported by the landmark generation method" << endl;
-            utils::exit_with(ExitCode::UNSUPPORTED);
+            utils::exit_with(ExitCode::SEARCH_UNSUPPORTED);
         }
         if (opts.get<bool>("optimal")) {
             lm_cost_assignment = utils::make_unique_ptr<LandmarkEfficientOptimalSharedCostAssignment>(
@@ -301,12 +301,12 @@ static Heuristic *_parse(OptionParser &parser) {
         );
     parser.document_note(
         "Optimal search",
-        "when using landmarks for optimal search (``admissible=true``), "
-        "you probably also want to enable the mpd option of the A* algorithm "
-        "to improve heuristic estimates");
+        "When using landmarks for optimal search (``admissible=true``), "
+        "you probably also want to add this heuristic as a lazy_evaluator "
+        "in the A* algorithm to improve heuristic estimates.");
     parser.document_note(
         "Note",
-        "to use ``optimal=true``, you must build the planner with LP support. "
+        "To use ``optimal=true``, you must build the planner with LP support. "
         "See LPBuildInstructions.");
 
     parser.document_language_support("action costs",
