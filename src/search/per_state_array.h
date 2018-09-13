@@ -1,5 +1,5 @@
-#ifndef PER_STATE_ARRAY_INFORMATION_H
-#define PER_STATE_ARRAY_INFORMATION_H
+#ifndef PER_STATE_ARRAY_H
+#define PER_STATE_ARRAY_H
 
 #include "per_state_information.h"
 
