@@ -13,13 +13,15 @@ using namespace std;
 using utils::ExitCode;
 
 namespace tasks {
-CostAdaptedTask::CostAdaptedTask(const Options &opts)
-    : DelegatingTask(g_root_task),
-      cost_type(OperatorCost(opts.get<int>("cost_type"))),
-      is_unit_cost(compute_is_unit_cost()) {
+CostAdaptedTask::CostAdaptedTask(
+    const shared_ptr<AbstractTask> &parent,
+    OperatorCost cost_type)
+    : DelegatingTask(parent),
+      cost_type(cost_type),
+      parent_is_unit_cost(compute_parent_is_unit_cost()) {
 }
 
-bool CostAdaptedTask::compute_is_unit_cost() const {
+bool CostAdaptedTask::compute_parent_is_unit_cost() const {
     int num_ops = parent->get_num_operators();
     for (int op_index = 0; op_index < num_ops; ++op_index) {
         if (parent->get_operator_cost(op_index, false) != 1)
@@ -41,7 +43,7 @@ int CostAdaptedTask::get_operator_cost(int index, bool is_axiom) const {
     case ONE:
         return 1;
     case PLUSONE:
-        if (is_unit_cost)
+        if (parent_is_unit_cost)
             return 1;
         else
             return original_cost + 1;
@@ -53,12 +55,17 @@ int CostAdaptedTask::get_operator_cost(int index, bool is_axiom) const {
 
 
 static shared_ptr<AbstractTask> _parse(OptionParser &parser) {
+    parser.document_synopsis(
+        "Cost-adapted task",
+        "A cost-adapting transformation of the root task.");
     add_cost_type_option_to_parser(parser);
     Options opts = parser.parse();
-    if (parser.dry_run())
+    if (parser.dry_run()) {
         return nullptr;
-    else
-        return make_shared<CostAdaptedTask>(opts);
+    } else {
+        OperatorCost cost_type = OperatorCost(opts.get<int>("cost_type"));
+        return make_shared<CostAdaptedTask>(g_root_task, cost_type);
+    }
 }
 
 static PluginShared<AbstractTask> _plugin("adapt_costs", _parse);
