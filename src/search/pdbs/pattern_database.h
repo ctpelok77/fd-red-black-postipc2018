@@ -65,6 +65,7 @@ public:
       the original concrete operator)
     */
     int get_cost() const {return cost;}
+
     void dump(const Pattern &pattern,
               const VariablesProxy &variables) const;
 };
