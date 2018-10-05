@@ -235,7 +235,7 @@ void Exploration::enqueue_if_necessary(ExProposition *prop, int cost, int depth,
 }
 
 void Exploration::compute_reachability_with_excludes(vector<vector<int>> &lvl_var,
-                                                     vector<unordered_map<FactPair, int>> &lvl_op,
+                                                     vector<utils::HashMap<FactPair, int>> &lvl_op,
                                                      bool level_out,
                                                      const vector<FactPair> &excluded_props,
                                                      const unordered_set<int> &excluded_op_ids,
