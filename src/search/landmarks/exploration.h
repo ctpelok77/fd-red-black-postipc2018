@@ -107,7 +107,7 @@ public:
     explicit Exploration(const TaskProxy &task_proxy);
 
     void compute_reachability_with_excludes(std::vector<std::vector<int>> &lvl_var,
-                                            std::vector<std::unordered_map<FactPair, int>> &lvl_op,
+                                            std::vector<utils::HashMap<FactPair, int>> &lvl_op,
                                             bool level_out,
                                             const std::vector<FactPair> &excluded_props,
                                             const std::unordered_set<int> &excluded_op_ids,
