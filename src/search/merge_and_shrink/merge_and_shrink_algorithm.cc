@@ -36,10 +36,6 @@ using options::Options;
 using utils::ExitCode;
 
 namespace merge_and_shrink {
-static void print_time(const utils::Timer &timer, string text) {
-    cout << "t=" << timer << " (" << text << ")" << endl;
-}
-
 MergeAndShrinkAlgorithm::MergeAndShrinkAlgorithm(const Options &opts) :
     merge_strategy_factory(opts.get<shared_ptr<MergeStrategyFactory>>("merge_strategy")),
     shrink_strategy(opts.get<shared_ptr<ShrinkStrategy>>("shrink_strategy")),
@@ -50,6 +46,8 @@ MergeAndShrinkAlgorithm::MergeAndShrinkAlgorithm(const Options &opts) :
     prune_unreachable_states(opts.get<bool>("prune_unreachable_states")),
     prune_irrelevant_states(opts.get<bool>("prune_irrelevant_states")),
     verbosity(static_cast<Verbosity>(opts.get_enum("verbosity"))),
+    max_time(opts.get<double>("max_time")),
+    num_transitions_to_abort(opts.get<int>("num_transitions_to_abort")),
     starting_peak_memory(0) {
     assert(max_states_before_merge > 0);
     assert(max_states >= max_states_before_merge);
@@ -144,6 +142,42 @@ void MergeAndShrinkAlgorithm::warn_on_unusual_options() const {
     }
 }
 
+bool MergeAndShrinkAlgorithm::ran_out_of_time(
+    const utils::Timer &timer) const {
+    if (timer() > max_time) {
+        if (verbosity >= Verbosity::NORMAL) {
+            cout << "Ran out of time, stopping computation." << endl;
+            cout << endl;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool MergeAndShrinkAlgorithm::too_many_transitions(const FactoredTransitionSystem &fts, int index) const {
+    int num_transitions = fts.get_transition_system(index).compute_total_transitions();
+    if (num_transitions > num_transitions_to_abort) {
+        if (verbosity >= Verbosity::NORMAL) {
+            cout << "Factor has too many transitions, stopping computation."
+                 << endl;
+            cout << endl;
+        }
+        return true;
+    }
+    return false;
+}
+
+bool MergeAndShrinkAlgorithm::too_many_transitions(const FactoredTransitionSystem &fts) const {
+    for (int index = 0; index < fts.get_size(); ++index) {
+        if (fts.is_active(index)) {
+            if (too_many_transitions(fts, index)) {
+                return true;
+            }
+        }
+    }
+    return false;
+}
+
 bool MergeAndShrinkAlgorithm::prune_fts(
     FactoredTransitionSystem &fts, const utils::Timer &timer) const {
     /*
@@ -191,6 +225,9 @@ void MergeAndShrinkAlgorithm::main_loop(
     while (fts.get_num_active_entries() > 1) {
         // Choose next transition systems to merge
         pair<int, int> merge_indices = merge_strategy->get_next();
+        if (ran_out_of_time(timer)) {
+            break;
+        }
         int merge_index1 = merge_indices.first;
         int merge_index2 = merge_indices.second;
         assert(merge_index1 != merge_index2);
@@ -212,6 +249,10 @@ void MergeAndShrinkAlgorithm::main_loop(
             }
         }
 
+        if (ran_out_of_time(timer)) {
+            break;
+        }
+
         // Shrinking
         bool shrunk = shrink_before_merge_step(
             fts,
@@ -226,12 +267,20 @@ void MergeAndShrinkAlgorithm::main_loop(
             print_time(timer, "after shrinking");
         }
 
+        if (ran_out_of_time(timer)) {
+            break;
+        }
+
         // Label reduction (before merging)
         if (label_reduction && label_reduction->reduce_before_merging()) {
             bool reduced = label_reduction->reduce(merge_indices, fts, verbosity);
             if (verbosity >= Verbosity::NORMAL && reduced) {
                 print_time(timer, "after label reduction");
             }
+        }
+
+        if (ran_out_of_time(timer)) {
+            break;
         }
 
         // Merging
@@ -246,6 +295,12 @@ void MergeAndShrinkAlgorithm::main_loop(
                 fts.statistics(merged_index);
             }
             print_time(timer, "after merging");
+        }
+
+        // We do not check for num transitions here but only after pruning
+        // to allow recovering a too large product.
+        if (ran_out_of_time(timer)) {
+            break;
         }
 
         // Pruning
@@ -275,6 +330,10 @@ void MergeAndShrinkAlgorithm::main_loop(
                 cout << "Abstract problem is unsolvable, stopping "
                     "computation. " << endl << endl;
             }
+            break;
+        }
+
+        if (ran_out_of_time(timer) || too_many_transitions(fts, merged_index)) {
             break;
         }
 
@@ -329,7 +388,9 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
             task_proxy,
             compute_init_distances,
             compute_goal_distances,
-            verbosity);
+            verbosity,
+            max_time,
+            timer);
     if (verbosity >= Verbosity::NORMAL) {
         print_time(timer, "after computation of atomic transition systems");
     }
@@ -341,6 +402,10 @@ FactoredTransitionSystem MergeAndShrinkAlgorithm::build_factored_transition_syst
 
     if (unsolvable) {
         cout << "Atomic FTS is unsolvable, stopping computation." << endl;
+    } else if (ran_out_of_time(timer)) {
+        // Ran out of time, do not proceed with main loop.
+    } else if (too_many_transitions(fts)) {
+        // A factor grew too many transitions, do not proceed with main loop.
     } else {
         main_loop(fts, task_proxy, timer);
     }
@@ -409,6 +474,23 @@ void add_merge_and_shrink_algorithm_options_to_parser(OptionParser &parser) {
         "Option to specify the level of verbosity.",
         "verbose",
         verbosity_level_docs);
+
+    parser.add_option<double>(
+        "max_time",
+        "A limit in seconds on the computation time of the heuristic. "
+        "If the limit is surpassed, the algorithm terminates, leaving the "
+        "chosen partial_mas_method to compute a heuristic from the set of "
+        "remaining factors.",
+        "infinity",
+        Bounds("0.0", "infinity"));
+    parser.add_option<int>(
+        "num_transitions_to_abort",
+        "A limit on the number of transitions of any factor during the "
+        "computation. Once this limit is reached, the algorithm terminates, "
+        "leaving the chosen partial_mas_method to compute a heuristic from the "
+        "set of remaining factors.",
+        "infinity",
+        Bounds("0", "infinity"));
 }
 
 void add_transition_system_size_limit_options_to_parser(OptionParser &parser) {

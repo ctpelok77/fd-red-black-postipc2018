@@ -7,10 +7,12 @@
 #include "merge_and_shrink_representation.h"
 #include "transition_system.h"
 #include "types.h"
+#include "utils.h"
 
 #include "../task_proxy.h"
 
 #include "../utils/memory.h"
+#include "../utils/timer.h"
 
 #include <algorithm>
 #include <cassert>
@@ -22,6 +24,8 @@ using namespace std;
 namespace merge_and_shrink {
 class FTSFactory {
     const TaskProxy &task_proxy;
+    const double max_time;
+    const utils::Timer &timer;
 
     struct TransitionSystemData {
         // The following two attributes are only used for statistics
@@ -51,11 +55,22 @@ class FTSFactory {
     vector<TransitionSystemData> transition_system_data_by_var;
     // see TODO in build_transitions()
     int task_has_conditional_effects;
+    /*
+      If running out of time during initializing the data of transition systems
+      (not computing transitions) or during computating transitions in the
+      end this variable stores the index to the last factor that it is in a
+      valid state. The resulting FTS will only consider valid factors.
+    */
+    int max_valid_factor_index;
+
+    bool check_time_and_set_valid_factors(
+        int var_index, string identifier, const Verbosity &verbosity);
+    bool ran_out_of_time() const;
 
     vector<unique_ptr<Label>> create_labels();
     void build_label_equivalence_relation(LabelEquivalenceRelation &label_equivalence_relation);
     void build_state_data(VariableProxy var);
-    void initialize_transition_system_data(const Labels &labels);
+    void initialize_transition_system_data(const Labels &labels, const Verbosity &verbosity);
     void add_transition(int var_no, int label_no,
                         int src_value, int dest_value);
     bool is_relevant(int var_no, int label_no) const;
@@ -70,13 +85,16 @@ class FTSFactory {
         const vector<bool> &has_effect_on_var);
     void build_transitions_for_operator(OperatorProxy op);
     void build_transitions_for_irrelevant_ops(VariableProxy variable);
-    void build_transitions();
+    void build_transitions(const Verbosity &verbosity);
     vector<unique_ptr<TransitionSystem>> create_transition_systems();
     vector<unique_ptr<MergeAndShrinkRepresentation>> create_mas_representations();
     vector<unique_ptr<Distances>> create_distances(
         const vector<unique_ptr<TransitionSystem>> &transition_systems);
 public:
-    explicit FTSFactory(const TaskProxy &task_proxy);
+    FTSFactory(
+        const TaskProxy &task_proxy,
+        double max_time,
+        const utils::Timer &timer);
     ~FTSFactory();
 
     /*
@@ -90,11 +108,37 @@ public:
 };
 
 
-FTSFactory::FTSFactory(const TaskProxy &task_proxy)
-    : task_proxy(task_proxy), task_has_conditional_effects(false) {
+FTSFactory::FTSFactory(
+    const TaskProxy &task_proxy,
+    const double max_time,
+    const utils::Timer &timer)
+    : task_proxy(task_proxy),
+      max_time(max_time),
+      timer(timer),
+      task_has_conditional_effects(false),
+      max_valid_factor_index(INF) {
 }
 
 FTSFactory::~FTSFactory() {
+}
+
+bool FTSFactory::check_time_and_set_valid_factors(
+    int var_index, string identifier, const Verbosity &verbosity) {
+    if (timer() > max_time) {
+        if (verbosity >= Verbosity::NORMAL) {
+            cout << endl;
+            cout << "Ran out of time during computation of " << identifier
+                 << ", stopping computation of atomic FTS at variable index "
+                 << var_index << endl;
+        }
+        max_valid_factor_index = var_index;
+        return true;
+    }
+    return false;
+}
+
+bool FTSFactory::ran_out_of_time() const {
+    return max_valid_factor_index != INF;
 }
 
 vector<unique_ptr<Label>> FTSFactory::create_labels() {
@@ -144,11 +188,13 @@ void FTSFactory::build_state_data(VariableProxy var) {
     }
 }
 
-void FTSFactory::initialize_transition_system_data(const Labels &labels) {
+void FTSFactory::initialize_transition_system_data(
+    const Labels &labels, const Verbosity &verbosity) {
     VariablesProxy variables = task_proxy.get_variables();
     int num_labels = task_proxy.get_operators().size();
     transition_system_data_by_var.resize(variables.size());
-    for (VariableProxy var : variables) {
+    for (size_t var_index = 0; var_index < variables.size(); ++var_index) {
+        VariableProxy var = variables[var_index];
         TransitionSystemData &ts_data = transition_system_data_by_var[var.get_id()];
         ts_data.num_variables = variables.size();
         ts_data.incorporated_variables.push_back(var.get_id());
@@ -157,6 +203,9 @@ void FTSFactory::initialize_transition_system_data(const Labels &labels) {
         ts_data.transitions_by_label.resize(labels.get_max_size());
         ts_data.relevant_labels.resize(num_labels, false);
         build_state_data(var);
+        if (check_time_and_set_valid_factors(var_index, "transition system data", verbosity)) {
+            break;
+        }
     }
 }
 
@@ -190,6 +239,12 @@ void FTSFactory::handle_operator_effect(
     VariableProxy var = fact.get_variable();
     int var_no = var.get_id();
     has_effect_on_var[var_no] = true;
+    if (var_no > max_valid_factor_index) {
+        if (!effect.get_conditions().empty()) {
+            task_has_conditional_effects = true;
+        }
+        return;
+    }
     int post_value = fact.get_value();
 
     // Determine possible values that var can have when this
@@ -259,6 +314,9 @@ void FTSFactory::handle_operator_precondition(
     const vector<bool> &has_effect_on_var) {
     int label_no = op.get_id();
     int var_no = precondition.get_variable().get_id();
+    if (var_no > max_valid_factor_index) {
+        return;
+    }
     if (!has_effect_on_var[var_no]) {
         int value = precondition.get_value();
         add_transition(var_no, label_no, value, value);
@@ -300,16 +358,33 @@ void FTSFactory::build_transitions_for_irrelevant_ops(VariableProxy variable) {
     }
 }
 
-void FTSFactory::build_transitions() {
+void FTSFactory::build_transitions(const Verbosity &verbosity) {
     /*
       - Add all transitions.
       - Computes relevant operator information as a side effect.
+      NOTE: we cannot interrupt the computation of transitions due to running
+      out of time even though this computation can take up very much time,
+      because leaving out transitions potentially renders the heuristic
+      inadmisisble.
     */
-    for (OperatorProxy op : task_proxy.get_operators())
+    for (size_t op_index = 0; op_index < task_proxy.get_operators().size(); ++op_index) {
+        OperatorProxy op = task_proxy.get_operators()[op_index];
         build_transitions_for_operator(op);
+    }
 
-    for (VariableProxy variable : task_proxy.get_variables())
+    for (size_t var_index = 0; var_index < task_proxy.get_variables().size(); ++var_index) {
+        if (static_cast<int>(var_index) > max_valid_factor_index) {
+            break;
+        }
+        VariableProxy variable = task_proxy.get_variables()[var_index];
         build_transitions_for_irrelevant_ops(variable);
+        /* We only check running of out time if we did not previously ran
+           out of time to avoid breaking this loop at the first iteration. */
+        if (!ran_out_of_time() && check_time_and_set_valid_factors(
+                var_index, "irrelevant operator transitions", verbosity)) {
+            break;
+        }
+    }
 
     if (task_has_conditional_effects) {
         /*
@@ -337,6 +412,9 @@ void FTSFactory::build_transitions() {
 vector<unique_ptr<TransitionSystem>> FTSFactory::create_transition_systems() {
     // Create the actual TransitionSystem objects.
     int num_variables = task_proxy.get_variables().size();
+    if (ran_out_of_time()) {
+        num_variables = max_valid_factor_index;
+    }
 
     // We reserve space for the transition systems added later by merging.
     vector<unique_ptr<TransitionSystem>> result;
@@ -363,6 +441,9 @@ vector<unique_ptr<TransitionSystem>> FTSFactory::create_transition_systems() {
 vector<unique_ptr<MergeAndShrinkRepresentation>> FTSFactory::create_mas_representations() {
     // Create the actual MergeAndShrinkRepresentation objects.
     int num_variables = task_proxy.get_variables().size();
+    if (ran_out_of_time()) {
+        num_variables = max_valid_factor_index;
+    }
 
     // We reserve space for the transition systems added later by merging.
     vector<unique_ptr<MergeAndShrinkRepresentation>> result;
@@ -381,6 +462,9 @@ vector<unique_ptr<Distances>> FTSFactory::create_distances(
     const vector<unique_ptr<TransitionSystem>> &transition_systems) {
     // Create the actual Distances objects.
     int num_variables = task_proxy.get_variables().size();
+    if (ran_out_of_time()) {
+        num_variables = max_valid_factor_index;
+    }
 
     // We reserve space for the transition systems added later by merging.
     vector<unique_ptr<Distances>> result;
@@ -404,14 +488,31 @@ FactoredTransitionSystem FTSFactory::create(
 
     unique_ptr<Labels> labels = utils::make_unique_ptr<Labels>(create_labels());
 
-    initialize_transition_system_data(*labels);
-    build_transitions();
+    initialize_transition_system_data(*labels, verbosity);
+    if (verbosity >= Verbosity::VERBOSE) {
+        print_time(timer, "atomic transition systems: done initializing "
+                   "transition system data");
+    }
+    build_transitions(verbosity);
+    if (verbosity >= Verbosity::VERBOSE) {
+        print_time(timer, "atomic transition systems: done adding transitions");
+    }
     vector<unique_ptr<TransitionSystem>> transition_systems =
         create_transition_systems();
+    if (verbosity >= Verbosity::VERBOSE) {
+        print_time(timer, "atomic transition systems: done creating transition systems");
+    }
     vector<unique_ptr<MergeAndShrinkRepresentation>> mas_representations =
         create_mas_representations();
+    if (verbosity >= Verbosity::VERBOSE) {
+        print_time(timer, "atomic transition systems: done creating "
+                   "merge-and-shrink representations");
+    }
     vector<unique_ptr<Distances>> distances =
         create_distances(transition_systems);
+    if (verbosity >= Verbosity::VERBOSE) {
+        print_time(timer, "atomic transition systems: done creating distances");
+    }
 
     return FactoredTransitionSystem(
         move(labels),
@@ -427,8 +528,10 @@ FactoredTransitionSystem create_factored_transition_system(
     const TaskProxy &task_proxy,
     const bool compute_init_distances,
     const bool compute_goal_distances,
-    Verbosity verbosity) {
-    return FTSFactory(task_proxy).create(
+    Verbosity verbosity,
+    const double max_time,
+    const utils::Timer &timer) {
+    return FTSFactory(task_proxy, max_time, timer).create(
         compute_init_distances,
         compute_goal_distances,
         verbosity);
