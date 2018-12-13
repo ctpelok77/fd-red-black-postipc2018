@@ -98,8 +98,8 @@ fast_downward_plugin(
         options/parse_tree
         options/predefinitions
         options/plugin
+        options/raw_registry
         options/registries
-        options/string_utils
         options/type_namer
     CORE_PLUGIN
 )
@@ -118,6 +118,7 @@ fast_downward_plugin(
         utils/memory
         utils/rng
         utils/rng_options
+        utils/strings
         utils/system
         utils/system_unix
         utils/system_windows
@@ -379,7 +380,7 @@ fast_downward_plugin(
 
 fast_downward_plugin(
     NAME PLUGIN_EAGER_WASTAR
-    HELP "Weighted eager best-first search"
+    HELP "Weighted eager A* search"
     SOURCES
         search_engines/plugin_eager_wastar
     DEPENDS EAGER_SEARCH SEARCH_COMMON
@@ -446,6 +447,7 @@ fast_downward_plugin(
     NAME RELAXATION_HEURISTIC
     HELP "The base class for relaxation heuristics"
     SOURCES
+        heuristics/array_pool
         heuristics/relaxation_heuristic
     DEPENDENCY_ONLY
 )
@@ -605,13 +607,15 @@ fast_downward_plugin(
         cegar/abstract_state
         cegar/additive_cartesian_heuristic
         cegar/cartesian_heuristic_function
+        cegar/cegar
         cegar/cost_saturation
         cegar/domains
         cegar/refinement_hierarchy
         cegar/split_selector
         cegar/subtask_generators
         cegar/transition
-        cegar/transition_updater
+        cegar/transition_system
+        cegar/types
         cegar/utils
         cegar/utils_landmarks
     DEPENDS ADDITIVE_HEURISTIC DYNAMIC_BITSET EXTRA_TASKS LANDMARKS PRIORITY_QUEUES TASK_PROPERTIES
@@ -627,6 +631,7 @@ fast_downward_plugin(
         merge_and_shrink/label_equivalence_relation
         merge_and_shrink/label_reduction
         merge_and_shrink/labels
+        merge_and_shrink/merge_and_shrink_algorithm
         merge_and_shrink/merge_and_shrink_heuristic
         merge_and_shrink/merge_and_shrink_representation
         merge_and_shrink/merge_scoring_function

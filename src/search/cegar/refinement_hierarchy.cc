@@ -5,12 +5,13 @@
 using namespace std;
 
 namespace cegar {
-Node::Node()
+Node::Node(int state_id)
     : left_child(nullptr),
       right_child(nullptr),
-      var(LEAF_NODE),
-      value(LEAF_NODE),
-      h(0) {
+      var(UNDEFINED),
+      value(UNDEFINED),
+      state_id(state_id) {
+    assert(state_id != UNDEFINED);
 }
 
 Node::~Node() {
@@ -22,19 +23,21 @@ Node::~Node() {
     }
 }
 
-pair<Node *, Node *> Node::split(int var, const vector<int> &values) {
+pair<Node *, Node *> Node::split(
+    int var, const vector<int> &values, int left_state_id, int right_state_id) {
     Node *helper = this;
-    right_child = new Node();
+    right_child = new Node(right_state_id);
     for (int value : values) {
-        Node *new_helper = new Node();
+        Node *new_helper = new Node(left_state_id);
         helper->var = var;
         helper->value = value;
         helper->left_child = new_helper;
         helper->right_child = right_child;
+        helper->state_id = UNDEFINED;
         assert(helper->is_split());
+        assert(!new_helper->is_split());
         helper = new_helper;
     }
-    assert(!helper->is_split());
     return make_pair(helper, right_child);
 }
 
@@ -46,8 +49,9 @@ Node *Node::get_child(int value) const {
 }
 
 
-RefinementHierarchy::RefinementHierarchy()
-    : root(new Node()) {
+RefinementHierarchy::RefinementHierarchy(const shared_ptr<AbstractTask> &task)
+    : task(task),
+      root(new Node(0)) {
 }
 
 Node *RefinementHierarchy::get_node(const State &state) const {
@@ -57,5 +61,11 @@ Node *RefinementHierarchy::get_node(const State &state) const {
         current = current->get_child(state[current->get_var()].get_value());
     }
     return current;
+}
+
+int RefinementHierarchy::get_abstract_state_id(const State &state) const {
+    TaskProxy subtask_proxy(*task);
+    State subtask_state = subtask_proxy.convert_ancestor_state(state);
+    return get_node(subtask_state)->get_state_id();
 }
 }
