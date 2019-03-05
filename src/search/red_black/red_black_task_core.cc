@@ -13,9 +13,6 @@ RedBlackTaskCore::RedBlackTaskCore(const AbstractTask &task) :
     create_extended_DTGs(task);
 }
 
-RedBlackTaskCore::~RedBlackTaskCore() {
-}
-
 // initialization
 void RedBlackTaskCore::initialize() {
     cout << "Initializing Red-Black task core..." << endl;
@@ -58,7 +55,8 @@ void RedBlackTaskCore::initialize() {
 
 void RedBlackTaskCore::free_mem() {
     for (DtgOperators* dtg : dtgs_by_transition) {
-        delete dtg;
+        if (dtg)
+            delete dtg;
     }
     dtgs_by_transition.clear();
     invertible_vars.clear();

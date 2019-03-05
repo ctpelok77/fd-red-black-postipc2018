@@ -33,12 +33,6 @@ RedBlackTask::RedBlackTask(const Options &opts, const AbstractTask &task) :
     }
 }
 
-
-RedBlackTask::~RedBlackTask() {
-
-}
-
-
 // initialization
 void RedBlackTask::initialize() {
     cout << "Initializing Red-Black task..." << endl;

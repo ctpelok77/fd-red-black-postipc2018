@@ -28,7 +28,6 @@ class RedBlackOperator {
     bool does_fire(EffectProxy eff, int *curr_state_buffer) const;
 public:
     RedBlackOperator(int _op_no, TaskProxy task_proxy);
-    virtual ~RedBlackOperator();
 
     void set_black_pre_eff(const std::vector<bool>& black_vars);
     const std::vector<FactProxy>& get_red_precondition() const { return red_precondition;}

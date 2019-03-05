@@ -27,17 +27,6 @@ RedBlackOperator::RedBlackOperator(int _op_no, TaskProxy task_proxy) : op_no(_op
     }
 }
 
-RedBlackOperator::~RedBlackOperator() {
-    red_precondition.clear();
-    red_effect.clear();
-    black_precondition.clear();
-    black_effect.clear();
-    red_precondition_not_prevail.clear();
-
-    red_condition.clear();
-    black_condition.clear();
-}
-
 int RedBlackOperator::get_pre_value_by_effect(EffectProxy eff) const {
     map<int,int>::const_iterator it = pre_value_by_effect.find(eff.get_fact().get_variable().get_id());
     if (it != pre_value_by_effect.end())

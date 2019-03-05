@@ -37,7 +37,6 @@ class RedBlackTaskCore {
 
 public:
     RedBlackTaskCore(const AbstractTask &task);
-    virtual ~RedBlackTaskCore();
 
     void initialize();
     DtgOperators* get_dtg(VariableProxy var) const { return dtgs_by_transition[var.get_id()]; }

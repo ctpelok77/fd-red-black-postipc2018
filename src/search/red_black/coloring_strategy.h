@@ -74,7 +74,6 @@ class ColoringStrategy {
     void set_black_variables(RedBlackTaskCore* core);
 public:
     ColoringStrategy(const options::Options &options, const AbstractTask &task);
-    virtual ~ColoringStrategy();
 
     void initialize(RedBlackTaskCore* core);
 

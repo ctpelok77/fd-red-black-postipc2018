@@ -690,8 +690,9 @@ void DtgOperators::free_solution() {
     cout << "=================> Freeing solution for variable " << var << " [" << task_proxy.get_variables()[var].get_name() << "]" << endl;
 #endif
     for (int val0=0; val0<range; ++val0) {
-        delete [] solution[val0];
-    }
+        if (solution[val0])
+            delete [] solution[val0];
+    }    
     delete [] solution;
     solution = 0;
 }
@@ -705,7 +706,8 @@ void DtgOperators::free_solution_edges_for_root() {
     cout << "=================> Freeing solution edges for variable " << var << " [" << task_proxy.get_variables()[var].get_name() << "]" << endl;
 #endif
     for (int val0=0;val0<range;++val0) {
-        delete [] sol_edges[val0];
+        if (sol_edges[val0])
+            delete [] sol_edges[val0];
     }
     delete [] sol_edges;
     sol_edges = 0;
