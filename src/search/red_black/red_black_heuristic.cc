@@ -88,9 +88,7 @@ void RedBlackHeuristic::initialize() {
         // We can skip the black variables here, since we check only for red preconditions
         // Also counting the red preconditions for future applicability test of labels in dijkstra.
         red_black_task.prepare_operators_for_counting_achieved_preconditions();
-    }
 
-    if (red_black_task.number_of_black_variables() > 0) {
         red_black_task.prepare_for_red_fact_following();
         red_black_task.prepare_for_red_fact_following_next_red_action_test();
 
@@ -115,14 +113,20 @@ void RedBlackHeuristic::initialize() {
 void RedBlackHeuristic::free_mem() {
     parallel_relaxed_plan.clear();
     propositions_per_operator.clear();
-    if (extract_plan) {
+    if (extract_plan && curr_state_buffer) {
         delete [] curr_state_buffer;
+        curr_state_buffer = 0;
     }
 
     red_black_task.free_mem();
-
-    delete [] connected_state_buffer;
-    delete [] black_state_buffer;
+    if (connected_state_buffer) {
+        delete [] connected_state_buffer;
+        connected_state_buffer = 0;
+    }
+    if (black_state_buffer) {
+        delete [] black_state_buffer;
+        black_state_buffer = 0;
+    }
 }
 
 

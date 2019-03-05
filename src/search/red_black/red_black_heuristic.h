@@ -145,7 +145,7 @@ protected:
 
 public:
     RedBlackHeuristic(const options::Options &options);
-    ~RedBlackHeuristic();
+    virtual ~RedBlackHeuristic();
 
     static void add_options_to_parser(OptionParser &parser);
 

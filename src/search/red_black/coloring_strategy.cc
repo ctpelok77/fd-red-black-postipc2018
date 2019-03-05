@@ -23,10 +23,6 @@ ColoringStrategy::ColoringStrategy(const Options &opts, const AbstractTask &task
         use_connected(true) {
 }
 
-
-ColoringStrategy::~ColoringStrategy() {
-}
-
 void ColoringStrategy::free_mem() {
     black_vars.clear();
 }

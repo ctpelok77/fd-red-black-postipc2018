@@ -78,7 +78,6 @@ class RedBlackTask {
 
 public:
     RedBlackTask(const options::Options &options, const AbstractTask &task);
-    virtual ~RedBlackTask();
 
     void initialize();
     size_t number_of_black_variables() const { return black_variables.size(); }
