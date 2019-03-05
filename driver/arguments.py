@@ -88,7 +88,7 @@ Examples:
 %s
 """ % "\n\n".join("%s\n%s" % (desc, " ".join(cmd)) for desc, cmd in EXAMPLES)
 
-COMPONENTS_PLUS_OVERALL = ["translate", "search", "validate", "overall"]
+COMPONENTS_PLUS_OVERALL = ["translate", "search", "validate", "overall", "transform"]
 DEFAULT_SAS_FILE = "output.sas"
 
 
@@ -225,6 +225,12 @@ def _set_components_and_inputs(parser, args):
     if not args.components:
         _set_components_automatically(parser, args)
 
+    # If there is a "search" component and transform is defined, add it before search
+    ind = args.components.index("search")    
+    if ind is not None and args.transform_task:
+        args.components.insert(ind, "transform_task")
+
+
     # We implicitly activate validation in debug mode. However, for
     # validation we need the PDDL input files and a plan, therefore both
     # components must be active.
@@ -236,6 +242,8 @@ def _set_components_and_inputs(parser, args):
     assert args.components
     first = args.components[0]
     num_files = len(args.filenames)
+    print(args.components)
+    print(first)
     # When passing --help to any of the components (or -h to the
     # translator), we don't require input filenames and silently
     # swallow any that are provided. This is undocumented to avoid
@@ -381,6 +389,9 @@ def parse_args():
     driver_other.add_argument(
         "--debug", action="store_true",
         help="alias for --build=debug --validate")
+    driver_other.add_argument(
+        "--transform-task",
+        help='path to or name of external program that transforms output.sas (e.g. h2-mutexes)')
     driver_other.add_argument(
         "--validate", action="store_true",
         help='validate plans (implied by --debug); needs "validate" (VAL) on PATH')

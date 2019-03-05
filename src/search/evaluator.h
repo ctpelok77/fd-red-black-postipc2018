@@ -91,6 +91,14 @@ public:
       the given state is cached, i.e., is_estimate_cached returns true.
     */
     virtual int get_cached_estimate(const GlobalState &state) const;
+
+    // Added by Michael
+    virtual bool found_solution() { return false; }
+    virtual const std::vector<OperatorID>& get_solution() const { return suffix_plan; }
+
+protected:
+    std::vector<OperatorID> suffix_plan;
+
 };
 
 #endif

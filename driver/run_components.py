@@ -97,6 +97,29 @@ def run_translate(args):
         return (returncode, False)
 
 
+def transform_task(args):
+    logging.info("Run task transformation (%s)." % args.transform_task)
+    time_limit = limits.get_time_limit(
+        args.transform_time_limit, args.overall_time_limit)
+    memory_limit = limits.get_memory_limit(
+        args.transform_memory_limit, args.overall_memory_limit)
+    executable = get_executable(args.build, args.transform_task)
+    logging.info("Absolute path: %s" % executable)
+    assert sys.executable, "Path to transform could not be found"
+
+    try:
+        call.check_call(
+            "transform_task",
+            [executable],
+            stdin=args.search_input,
+            time_limit=time_limit,
+            memory_limit=memory_limit)
+    except subprocess.CalledProcessError as err:
+        return (err.returncode, False)
+    else:
+        return (0, True)
+
+
 def run_search(args):
     logging.info("Running search (%s)." % args.build)
     time_limit = limits.get_time_limit(
@@ -109,7 +132,7 @@ def run_search(args):
         args.plan_file,
         portfolio_bound=args.portfolio_bound,
         single_plan=args.portfolio_single_plan)
-    plan_manager.delete_existing_plans()
+    #plan_manager.delete_existing_plans()
 
     if args.portfolio:
         assert not args.search_options
