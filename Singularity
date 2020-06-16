@@ -12,5 +12,5 @@ From: ctpelok77/cerberus:latest
 
 %labels
 Name        Cerberus
-Description Red-black planning heuristic with native support for conditional effects, h^2 mutexes, novelty heuristic for search guidance
+Description Red-black planning heuristic with native support for conditional effects, h^2 mutexes, novelty heuristic for search guidance. Post-IPC 2018 version.
 Authors     Michael Katz <michael.katz1@ibm.com>
