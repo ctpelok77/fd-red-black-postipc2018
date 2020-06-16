@@ -10,6 +10,7 @@ From: ctpelok77/cerberus:latest
 
 %post
 
+## Cerberus planner
 %labels
 Name        Cerberus
 Description Red-black planning heuristic with native support for conditional effects, h^2 mutexes, novelty heuristic for search guidance. Post-IPC 2018 version.
