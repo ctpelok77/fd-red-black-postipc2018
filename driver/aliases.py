@@ -169,6 +169,8 @@ def _get_cerberus(**kwargs):
         "--evaluator", 
         "hrb1=RB(dag={dag}, extract_plan=true, transform=adapt_costs(one))".format(**kwargs),
         "--evaluator",
+        "hn=novelty(eval=hrb1)",
+        "--evaluator",
         "hlm2=lmcount(lm_rhw(reasonable_orders=true),transform=adapt_costs(plusone),pref={pref})".format(**kwargs),
         "--evaluator", 
         "hrb2=RB(dag={dag}, extract_plan=true, transform=adapt_costs(plusone))".format(**kwargs),
