@@ -156,7 +156,7 @@ public:
     bool is_currently_RB_applicable(const vector<int>& ops) const;
 
     // Michael: For checking overall applicability
-    virtual bool found_solution() {
+    virtual bool found_solution() const {
         return extract_plan && solution_found_by_heuristic;
     }
 };

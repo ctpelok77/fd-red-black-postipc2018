@@ -14,7 +14,7 @@ protected:
 public:
     NoveltyHeuristic(const options::Options &options);
 
-    virtual bool found_solution();
+    virtual bool found_solution() const { return novelty_heuristic->found_solution(); }
     virtual const std::vector<OperatorID>& get_solution() const;
 
 };

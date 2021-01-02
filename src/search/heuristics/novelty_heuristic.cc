@@ -51,15 +51,11 @@ int NoveltyHeuristic::compute_heuristic(const GlobalState &global_state) {
     } else {
         ret += strictly_worse_novelty_facts_estimate;
     }
-    return ret;
-}
-
-bool NoveltyHeuristic::found_solution() {
+    // Check if solution found by heuristic
     if (novelty_heuristic->found_solution()) {
         solution_found_by_heuristic = true;
-        return true;
     }
-    return false;
+    return ret;
 }
 
 const std::vector<OperatorID>& NoveltyHeuristic::get_solution() const {
