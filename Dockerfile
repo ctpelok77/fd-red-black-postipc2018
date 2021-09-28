@@ -21,7 +21,7 @@ WORKDIR /workspace/cerberus/
 
 # Set up some environment variables.
 ENV CXX g++
-ENV BUILD_COMMIT_ID 821fad1
+ENV BUILD_COMMIT_ID a016404
 
 # Fetch the code at the right commit ID from the Github repo
 RUN curl -L https://github.com/ctpelok77/fd-red-black-postipc2018/archive/${BUILD_COMMIT_ID}.tar.gz | tar xz --strip=1
