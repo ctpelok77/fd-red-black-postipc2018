@@ -55,5 +55,5 @@ COPY --from=builder /workspace/cerberus/driver ./driver
 
 WORKDIR /work
 
-# ENTRYPOINT ["/usr/bin/python3", "/workspace/cerberus/fast-downward.py"]
-CMD /bin/bash
+ENTRYPOINT ["/usr/bin/python3", "/workspace/cerberus/fast-downward.py"]
+#CMD /bin/bash
